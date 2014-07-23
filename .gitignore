@@ -14,6 +14,7 @@ target/*
 *.sh~
 *.conf~
 *.scala~
+*.md~
 .metadata
 target
 .DS_Store
