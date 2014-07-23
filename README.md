@@ -12,7 +12,8 @@ The project uses a hierarchy of classloaders in order to achieve the isolation n
 
 You need to have sbt 0.13.x installed. To build SJR, follow the below steps:
 
-cd spark-jobserver-master
+cd spark-job-rest
+
 sbt compile package assembly
 
 ## Configure Spark-job-rest
