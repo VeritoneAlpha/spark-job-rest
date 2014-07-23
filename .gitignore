@@ -1,0 +1,27 @@
+.cache
+syntax: glob
+*.log
+RemoteSystemsTempFiles
+*.metadata
+target/*
+.DS_Store
+*.settings
+*.classpath
+*.idea
+*.iml
+*.orig
+*.txt~
+*.sh~
+*.conf~
+*.scala~
+.metadata
+target
+.DS_Store
+.settings
+.classpath
+.project
+classpath
+.idea
+.iml
+.orig
+.java.orig
