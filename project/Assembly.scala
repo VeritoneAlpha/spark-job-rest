@@ -42,8 +42,8 @@ object Assembly {
     jarName in assembly := "akka.jar",
     excludedJars in assembly <<= (fullClasspath in assembly) map { _ filter { cp =>
       List("servlet-api", "guice-all", "junit", "uuid",
-        "jetty", "jsp-api-2.0", "antlr", "avro"
-        , "spark", "commons-cli", "stax-api", "mockito", "hdfs", "hadoop", "mesos").exists(cp.data.getName.startsWith(_))
+        "jetty", "jsp-api-2.0", "antlr", "avro",
+         "spark", "commons-cli", "stax-api", "mockito", "hdfs", "hadoop", "mesos").exists(cp.data.getName.startsWith(_))
     } },
     assembleArtifact in packageScala := true,   // We don't need the Scala library, Spark already includes it
     mergeStrategy in assembly := {

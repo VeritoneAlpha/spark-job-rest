@@ -11,34 +11,32 @@ object Dependencies {
   val excludeZookeper = ExclusionRule(organization = "org.apache.zookeeper")
   val excludeSlf4j = ExclusionRule(organization = "org.slf4j")
   val excludeIoNetty = ExclusionRule(organization = "io.netty")
+  val excludeProtoBuf = ExclusionRule(organization =  "com.google.protobuf")
 
   lazy val akkaDeps = Seq(
     // Akka is provided because Spark already includes it, and Spark's version is shaded so it's not safe
     // to use this one
-    "io.netty" % "netty" % "3.6.6.Final",
-    "com.typesafe.akka" %% "akka-slf4j" % "2.2.4" % "provided",
-    "com.typesafe.akka" % "akka-remote_2.10" % "2.2.3",
+    "com.google.protobuf" % "protobuf-java" % "2.5.0",
+    "io.netty" % "netty-all" % "4.0.17.Final",
+    "org.spark-project.akka" %% "akka-slf4j" % "2.2.3-shaded-protobuf",
+    "org.spark-project.akka" %% "akka-remote" % "2.2.3-shaded-protobuf",
     "io.spray" %% "spray-json" % "1.2.5",
     "io.spray" % "spray-can" % "1.2.0",
     "io.spray" % "spray-routing" % "1.2.0",
-//    "org.apache.spark.atigeo" %% "spark-core" % "0.9.1" excludeAll(excludeIoNetty, excludeSlf4j, excludeZookeper, excludeMesos, excludeHadoop),
-    "org.apache.spark.latch" %% "spark-core" % "0.9.1" excludeAll(excludeIoNetty, excludeSlf4j, excludeZookeper, excludeMesos, excludeHadoop),
-    "org.apache.spark" %% "spark-core" % "0.9.1" excludeAll(excludeIoNetty, excludeSlf4j, excludeZookeper, excludeMesos, excludeHadoop),
-    "org.slf4j" % "slf4j-api" % "1.7.2"
+    "org.apache.spark" %% "spark-core" % "1.0.1" excludeAll(excludeIoNetty, excludeSlf4j, excludeZookeper, excludeMesos, excludeHadoop),
+    "org.slf4j" % "slf4j-api" % "1.7.5"
 
   )
 
   lazy val sparkDeps = Seq(
     // Force netty version.  This avoids some Spark netty dependency problem.
-    "io.netty" % "netty" % "3.6.6.Final",
-    "org.apache.hadoop" % "hadoop-hdfs" % "2.0.0-cdh4.6.0",
-    "org.apache.hadoop" % "hadoop-client" % "2.0.0-mr1-cdh4.6.0",
-    "org.apache.hadoop" % "hadoop-core" % "2.0.0-mr1-cdh4.6.0",
-    "org.slf4j" % "slf4j-api" % "1.7.2",
-    "org.slf4j" % "slf4j-log4j12" % "1.7.2",
-//    "org.apache.spark.atigeo" %% "spark-core" % "0.9.1" excludeAll(excludeIoNetty, excludeSlf4j, excludeZookeper, excludeMesos, excludeHadoop),
-    "org.apache.spark.latch" %% "spark-core" % "0.9.1" excludeAll(excludeIoNetty, excludeSlf4j, excludeZookeper, excludeMesos, excludeHadoop),
-    "org.apache.spark" %% "spark-core" % "0.9.1" excludeAll(excludeIoNetty, excludeSlf4j, excludeZookeper, excludeMesos, excludeHadoop)
+    "io.netty" % "netty-all" % "4.0.17.Final",
+    "org.apache.hadoop" % "hadoop-hdfs" % "2.3.0-cdh5.1.0",
+    "org.apache.hadoop" % "hadoop-client" % "2.3.0-mr1-cdh5.1.0",
+    "org.apache.hadoop" % "hadoop-core" % "2.3.0-mr1-cdh5.1.0",
+    "org.slf4j" % "slf4j-api" % "1.7.5",
+    "org.slf4j" % "slf4j-log4j12" % "1.7.5",
+    "org.apache.spark" %% "spark-core" % "1.0.1" excludeAll(excludeIoNetty, excludeSlf4j, excludeZookeper, excludeMesos, excludeHadoop)
   )
 
   lazy val slickDeps = Seq(
@@ -47,14 +45,14 @@ object Dependencies {
   )
 
   lazy val logbackDeps = Seq(
-    "org.slf4j" % "slf4j-api" % "1.7.2",
-    "org.slf4j" % "slf4j-log4j12" % "1.7.2",
-    "log4j" % "log4j" % "1.2.16"
+    "org.slf4j" % "slf4j-api" % "1.7.5",
+    "org.slf4j" % "slf4j-log4j12" % "1.7.5",
+    "log4j" % "log4j" % "1.2.17"
   )
 
   lazy val coreTestDeps = Seq(
     "org.scalatest" %% "scalatest" % "1.9.1" % "test",
-    "com.typesafe.akka" %% "akka-testkit" % "2.2.4" % "test",
+    "org.spark-project.akka" %% "akka-testkit" % "2.2.3-shaded-protobuf" % "test",
     "io.spray" % "spray-testkit" % "1.2.0" % "test"
   )
 
@@ -66,14 +64,13 @@ object Dependencies {
   )
 
   lazy val mesosDeps = Seq(
-    "org.apache.mesos" % "mesos" % "0.16.0"
+    "org.apache.mesos" % "mesos" % "0.19.0"
   )
 
   val repos = Seq(
     "Typesafe Repo" at "http://repo.typesafe.com/typesafe/releases/",
     "sonatype snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/",
     "spray repo" at "http://repo.spray.io",
-    "cloudera-repo-releases" at "https://repository.cloudera.com/artifactory/repo/",
-    "atigeo" at "http://nexus-2.life.atigeo.com:8080/nexus/content/repositories/atigeo/"
+    "cloudera-repo-releases" at "https://repository.cloudera.com/artifactory/repo/"
   )
 }

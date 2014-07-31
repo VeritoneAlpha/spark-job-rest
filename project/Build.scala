@@ -111,7 +111,7 @@ object JobRestBuild extends Build {
     organization := "ooyala.cnd",
     version      := "0.3.1",
     crossPaths   := false,
-    scalaVersion := "2.10.3",
+    scalaVersion := "2.10.4",
     scalaBinaryVersion := "2.10",
 
     runScalaStyle := {
