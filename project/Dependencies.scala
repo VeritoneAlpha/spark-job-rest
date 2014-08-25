@@ -23,7 +23,7 @@ object Dependencies {
     "io.spray" %% "spray-json" % "1.2.5",
     "io.spray" % "spray-can" % "1.2.0",
     "io.spray" % "spray-routing" % "1.2.0",
-    "org.apache.spark" %% "spark-core" % "1.0.1" excludeAll(excludeIoNetty, excludeSlf4j, excludeZookeper, excludeMesos, excludeHadoop),
+    "org.apache.spark" %% "spark-core" % "1.0.1" excludeAll(excludeIoNetty, excludeSlf4j, excludeMesos, excludeHadoop),
     "org.slf4j" % "slf4j-api" % "1.7.5"
 
   )
@@ -36,7 +36,7 @@ object Dependencies {
     "org.apache.hadoop" % "hadoop-core" % "2.3.0-mr1-cdh5.1.0",
     "org.slf4j" % "slf4j-api" % "1.7.5",
     "org.slf4j" % "slf4j-log4j12" % "1.7.5",
-    "org.apache.spark" %% "spark-core" % "1.0.1" excludeAll(excludeIoNetty, excludeSlf4j, excludeZookeper, excludeMesos, excludeHadoop)
+    "org.apache.spark" %% "spark-core" % "1.0.1" excludeAll(excludeIoNetty, excludeSlf4j, excludeMesos, excludeHadoop)
   )
 
   lazy val slickDeps = Seq(
