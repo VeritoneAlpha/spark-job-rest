@@ -1,5 +1,4 @@
 import sbt._
-import Keys._
 
 object Dependencies {
   val excludeCglib = ExclusionRule(organization = "org.sonatype.sisu.inject")
@@ -8,10 +7,8 @@ object Dependencies {
   val excludeAsm = ExclusionRule(organization = "asm")
   val excludeHadoop = ExclusionRule(organization = "org.apache.hadoop")
   val excludeMesos = ExclusionRule(organization = "org.apache.mesos")
-  val excludeZookeper = ExclusionRule(organization = "org.apache.zookeeper")
   val excludeSlf4j = ExclusionRule(organization = "org.slf4j")
   val excludeIoNetty = ExclusionRule(organization = "io.netty")
-  val excludeProtoBuf = ExclusionRule(organization =  "com.google.protobuf")
 
   lazy val akkaDeps = Seq(
     // Akka is provided because Spark already includes it, and Spark's version is shaded so it's not safe
@@ -24,8 +21,8 @@ object Dependencies {
     "io.spray" % "spray-can" % "1.2.0",
     "io.spray" % "spray-routing" % "1.2.0",
     "org.apache.spark" %% "spark-core" % "1.0.2" excludeAll(excludeIoNetty, excludeSlf4j, excludeMesos, excludeHadoop),
-    "org.slf4j" % "slf4j-api" % "1.7.5"
-
+    "org.slf4j" % "slf4j-api" % "1.7.5",
+  "org.tachyonproject" % "tachyon" % "0.5.0"
   )
 
   lazy val sparkDeps = Seq(
@@ -36,7 +33,9 @@ object Dependencies {
     "org.apache.hadoop" % "hadoop-core" % "2.3.0-mr1-cdh5.1.0",
     "org.slf4j" % "slf4j-api" % "1.7.5",
     "org.slf4j" % "slf4j-log4j12" % "1.7.5",
-    "org.apache.spark" %% "spark-core" % "1.0.2" excludeAll(excludeIoNetty, excludeSlf4j, excludeMesos, excludeHadoop)
+    "org.apache.spark" %% "spark-core" % "1.0.2" excludeAll(excludeIoNetty, excludeSlf4j, excludeMesos, excludeHadoop),
+    "org.tachyonproject" % "tachyon" % "0.5.0"
+
   )
 
   lazy val slickDeps = Seq(
