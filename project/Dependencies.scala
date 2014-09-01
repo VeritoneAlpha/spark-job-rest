@@ -12,6 +12,15 @@ object Dependencies {
   val excludeSlf4j = ExclusionRule(organization = "org.slf4j")
   val excludeIoNetty = ExclusionRule(organization = "io.netty")
   val excludeProtoBuf = ExclusionRule(organization =  "com.google.protobuf")
+  val excludeCurator = ExclusionRule(organization = "org.apache.curator")
+  val excludePowermock = ExclusionRule(organization = "org.powermock")
+  val excludeEclipseJetty = ExclusionRule(organization = "org.eclipse.jetty")
+
+  val SPARK_VERSION = "1.0.1"
+  val HADOOP_HDFS_VERSION = "2.3.0-cdh5.1.0"
+  val HADOOP_CLIENT_VERSION = "2.3.0-mr1-cdh5.1.0"
+  val TACHYON_VERSION = "0.5.0"
+  val MESOS_VERSION ="0.19.0"
 
   lazy val akkaDeps = Seq(
     // Akka is provided because Spark already includes it, and Spark's version is shaded so it's not safe
@@ -23,20 +32,20 @@ object Dependencies {
     "io.spray" %% "spray-json" % "1.2.5",
     "io.spray" % "spray-can" % "1.2.0",
     "io.spray" % "spray-routing" % "1.2.0",
-    "org.apache.spark" %% "spark-core" % "1.0.1" excludeAll(excludeIoNetty, excludeSlf4j, excludeMesos, excludeHadoop),
-    "org.slf4j" % "slf4j-api" % "1.7.5"
-
+    "org.apache.spark" %% "spark-core" % SPARK_VERSION excludeAll(excludeIoNetty, excludeSlf4j, excludeMesos, excludeHadoop),
+    "org.slf4j" % "slf4j-api" % "1.7.5",
+    "org.tachyonproject" % "tachyon" % TACHYON_VERSION excludeAll(excludeHadoop, excludeCurator, excludeEclipseJetty, excludePowermock)
   )
 
   lazy val sparkDeps = Seq(
     // Force netty version.  This avoids some Spark netty dependency problem.
     "io.netty" % "netty-all" % "4.0.17.Final",
-    "org.apache.hadoop" % "hadoop-hdfs" % "2.3.0-cdh5.1.0",
-    "org.apache.hadoop" % "hadoop-client" % "2.3.0-mr1-cdh5.1.0",
-    "org.apache.hadoop" % "hadoop-core" % "2.3.0-mr1-cdh5.1.0",
+    "org.apache.hadoop" % "hadoop-hdfs" % HADOOP_HDFS_VERSION,
+    "org.apache.hadoop" % "hadoop-client" % HADOOP_CLIENT_VERSION,
+    "org.apache.hadoop" % "hadoop-core" % HADOOP_CLIENT_VERSION,
     "org.slf4j" % "slf4j-api" % "1.7.5",
     "org.slf4j" % "slf4j-log4j12" % "1.7.5",
-    "org.apache.spark" %% "spark-core" % "1.0.1" excludeAll(excludeIoNetty, excludeSlf4j, excludeMesos, excludeHadoop)
+    "org.apache.spark" %% "spark-core" % SPARK_VERSION excludeAll(excludeIoNetty, excludeSlf4j, excludeMesos, excludeHadoop)
   )
 
   lazy val slickDeps = Seq(
@@ -64,7 +73,7 @@ object Dependencies {
   )
 
   lazy val mesosDeps = Seq(
-    "org.apache.mesos" % "mesos" % "0.19.0"
+    "org.apache.mesos" % "mesos" % MESOS_VERSION
   )
 
   val repos = Seq(
