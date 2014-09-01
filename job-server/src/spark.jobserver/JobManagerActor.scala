@@ -270,8 +270,8 @@ class JobManagerActor(daoRef: ActorSelection,
         // If and only if job validation fails, JobErroredOut message is dropped silently in JobStatusActor.
         statusActor ! JobErroredOut(jobId, DateTime.now(), error)
         logger.warn("Exception from job " + jobId + ": ", error)
-      case _ => println("WEIRD THING HAPPENED TO YOUR JOB!!!")
-        statusActor ! JobErroredOut(jobId, DateTime.now(), new Exception("WEIRD UNCAUGHT ERROR"))
+      case _ => println("Unexpected error")
+        statusActor ! JobErroredOut(jobId, DateTime.now(), new Exception("Unexpected error"))
     }.andThen {
       case _ =>
         // Make sure to decrement the count of running jobs when a job finishes, in both success and failure

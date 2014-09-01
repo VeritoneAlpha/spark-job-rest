@@ -8,7 +8,6 @@ import com.typesafe.sbt.SbtScalariform._
 import org.scalastyle.sbt.ScalastylePlugin
 import scalariform.formatter.preferences._
 import bintray.Plugin.bintrayPublishSettings
-
 // There are advantages to using real Scala build files with SBT:
 //  - Multi-JVM testing won't work without it, for now
 //  - You get full IDE support
