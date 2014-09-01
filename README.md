@@ -26,7 +26,7 @@ In order to configure SJR the following files need to be edited.
 	- jobserverjar : Full path to /job-server/target/spark-job-rest.jar
 	- jobmanagerjar : Full path to /job-manager-helper/target/job-manager-helper-0.3.1.jar
 	- akkajar  : Full path to /akka-app/target/akka.jar
-	- mesoshelperjar : Full path to mesos-loader/target/mesos-loader-4.0.0.jar
+	- mesoshelperjar : Full path to mesos-loader/target/mesos-loader-0.3.1.jar
 	- mesosjar : Full path to mesos jar (mesos-0.16.0.jar)
 * bin/start-server.sh : Used for starting the server.
 	- Path to application.conf must be configured
