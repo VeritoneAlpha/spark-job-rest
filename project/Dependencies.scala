@@ -31,7 +31,7 @@ object Dependencies {
     "io.spray" % "spray-routing" % "1.2.0",
     "org.apache.spark" %% "spark-core" % SPARK_VERSION excludeAll(excludeIoNetty, excludeSlf4j, excludeMesos, excludeHadoop),
     "org.slf4j" % "slf4j-api" % "1.7.5",
-    "org.tachyonproject" % "tachyon" % TACHYON_VERSION excludeAll(excludeHadoop, excludeCurator, excludeEclipseJetty, excludePowermock)
+    "org.tachyonproject" % "tachyon" % TACHYON_VERSION excludeAll(excludeHadoop)
   )
 
   lazy val sparkDeps = Seq(
@@ -43,7 +43,7 @@ object Dependencies {
     "org.slf4j" % "slf4j-api" % "1.7.5",
     "org.slf4j" % "slf4j-log4j12" % "1.7.5",
     "org.apache.spark" %% "spark-core" % SPARK_VERSION excludeAll(excludeIoNetty, excludeSlf4j, excludeMesos, excludeHadoop),
-    "org.tachyonproject" % "tachyon" % TACHYON_VERSION excludeAll(excludeHadoop, excludeCurator, excludeEclipseJetty, excludePowermock)
+    "org.tachyonproject" % "tachyon" % TACHYON_VERSION excludeAll(excludeHadoop)
 
   )
 
