@@ -13,7 +13,7 @@ object Dependencies {
   val excludePowermock = ExclusionRule(organization = "org.powermock")
   val excludeEclipseJetty = ExclusionRule(organization = "org.eclipse.jetty")
 
-  val SPARK_VERSION = "1.0.2"
+  val SPARK_VERSION = "1.1.0"
   val HADOOP_HDFS_VERSION = "2.3.0-cdh5.1.0"
   val HADOOP_CLIENT_VERSION = "2.3.0-mr1-cdh5.1.0"
   val TACHYON_VERSION = "0.5.0"
@@ -31,7 +31,7 @@ object Dependencies {
     "io.spray" % "spray-routing" % "1.2.0",
     "org.apache.spark" %% "spark-core" % SPARK_VERSION excludeAll(excludeIoNetty, excludeSlf4j, excludeMesos, excludeHadoop),
     "org.slf4j" % "slf4j-api" % "1.7.5",
-    "org.tachyonproject" % "tachyon" % TACHYON_VERSION excludeAll(excludeHadoop, excludeCurator, excludeEclipseJetty, excludePowermock)
+    "org.tachyonproject" % "tachyon" % TACHYON_VERSION excludeAll(excludeHadoop)
   )
 
   lazy val sparkDeps = Seq(
@@ -43,7 +43,7 @@ object Dependencies {
     "org.slf4j" % "slf4j-api" % "1.7.5",
     "org.slf4j" % "slf4j-log4j12" % "1.7.5",
     "org.apache.spark" %% "spark-core" % SPARK_VERSION excludeAll(excludeIoNetty, excludeSlf4j, excludeMesos, excludeHadoop),
-    "org.tachyonproject" % "tachyon" % TACHYON_VERSION excludeAll(excludeHadoop, excludeCurator, excludeEclipseJetty, excludePowermock)
+    "org.tachyonproject" % "tachyon" % TACHYON_VERSION excludeAll(excludeHadoop)
 
   )
 
