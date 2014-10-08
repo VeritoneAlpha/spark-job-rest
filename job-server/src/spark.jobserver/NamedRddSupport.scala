@@ -15,7 +15,7 @@ import scala.concurrent.duration.Duration
  * only one will win and the other will retrieve the same one.
  *
  * Note that to take advantage of NamedRddSupport, a job must mix this in and use the APIs here instead of
- * the native RDD `cache()`, otherwise  we will not know about the names.
+ * the native RDD `cache()`, otherwise we will not know about the names.
  */
 trait NamedRdds {
   // Default timeout is 60 seconds. Hopefully that is enough to let most RDD generator functions finish.

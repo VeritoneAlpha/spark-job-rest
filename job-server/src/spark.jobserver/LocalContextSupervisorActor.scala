@@ -1,14 +1,16 @@
 package spark.jobserver
 
-import akka.actor.{ActorRef, ActorSelection, Props, PoisonPill}
+import akka.actor.{Terminated, Props, ActorRef, PoisonPill}
 import akka.pattern.ask
 import akka.util.Timeout
 import com.typesafe.config.Config
+import com.typesafe.config.ConfigFactory
 import ooyala.common.akka.InstrumentedActor
+import spark.jobserver.io.JobDAO
 import scala.collection.mutable
 import scala.util.{Failure, Success, Try}
-import java.net.{URLClassLoader, URL}
-import com.atigeo.jobmanager.{ManagerActor, JobManagerParameter}
+import org.joda.time.DateTime
+import org.joda.time.format.DateTimeFormat
 
 /** Messages common to all ContextSupervisors */
 object ContextSupervisor {
@@ -61,52 +63,22 @@ object ContextSupervisor {
  *   }
  * }}}
  */
-class LocalContextSupervisorActor(dao: ActorRef, configFile: String) extends InstrumentedActor {
+class LocalContextSupervisorActor(dao: JobDAO) extends InstrumentedActor {
   import ContextSupervisor._
   import scala.collection.JavaConverters._
   import scala.concurrent.duration._
 
   val config = context.system.settings.config
-  val urls = new Array[URL](2);
-  urls(0) = new URL("file://" + config.getString("spark.jobserver.jobmanagerjar"));
-  urls(1) = new URL("file://" + config.getString("spark.jobserver.akkajar"));
-
-
-  val firstClassLoader = new URLClassLoader(urls, ClassLoader.getSystemClassLoader().getParent());
-
-  val runnableClass = firstClassLoader.loadClass("com.atigeo.jobmanager.ManagerActorCreator");
-  val constr = runnableClass.getConstructor(classOf[URLClassLoader], classOf[String]);
-
-
-  val runnable = constr.newInstance(firstClassLoader, configFile);
-  val run: Runnable = runnable.asInstanceOf[Runnable];
-  val thread = new Thread(run);
-  thread.setContextClassLoader(firstClassLoader)
-  thread.start
-
-  Thread.sleep(3000);
-
-  var port = config.getInt("front.akka.remote.netty.tcp.port")
-
-  val customManager = context.actorSelection("akka.tcp://local@localhost:" + port + "/user/manager");
-  customManager ! "from:LocalContextSupervisorActor: Manager Actor Initialized!"
-
-
   val defaultContextConfig = config.getConfig("spark.context-settings")
   val contextTimeout = config.getMilliseconds("spark.jobserver.context-creation-timeout").toInt / 1000
   import context.dispatcher   // to get ExecutionContext for futures
 
-  private val contexts = mutable.HashMap.empty[String, ActorSelection]
-  private val resultActors = mutable.HashMap.empty[String, ActorSelection]
+  private val contexts = mutable.HashMap.empty[String, ActorRef]
+  private val resultActors = mutable.HashMap.empty[String, ActorRef]
 
   // This is for capturing results for ad-hoc jobs. Otherwise when ad-hoc job dies, resultActor also dies,
   // and there is no way to retrieve results.
-
-//  val globalResultActor = context.actorOf(Props[JobResultActor], "global-result-actor")
-    val globalResultActorRef = context.actorOf(Props(classOf[JobResultActor], configFile), "global-result-actor")
-    val globalResultActor = context.actorSelection("global-result-actor")
-//    globalResultActor ! "Initialized globalResultActor in the LocalContextSupervizorActor"
-//    globalResultActorRef ! "Ref was hit"
+  val globalResultActor = context.actorOf(Props[JobResultActor], "global-result-actor")
 
   def wrappedReceive: Receive = {
     case AddContextsFromConfig =>
@@ -121,7 +93,6 @@ class LocalContextSupervisorActor(dao: ActorRef, configFile: String) extends Ins
       if (contexts contains name) {
         originator ! ContextAlreadyExists
       } else {
-//        originator ! "sampleMess"
         startContext(name, mergedConfig, false, contextTimeout) { contextMgr =>
           originator ! ContextInitialized
         } { err =>
@@ -138,7 +109,7 @@ class LocalContextSupervisorActor(dao: ActorRef, configFile: String) extends Ins
       // Keep generating context name till there is no collision
       var contextName = ""
       do {
-        contextName = java.util.UUID.randomUUID().toString().substring(0, 8) + "-" + classPath.replace(".", "-")
+        contextName = java.util.UUID.randomUUID().toString().substring(0, 8) + "-" + classPath
       } while (contexts contains contextName)
 
       // Create JobManagerActor and JobResultActor
@@ -161,56 +132,46 @@ class LocalContextSupervisorActor(dao: ActorRef, configFile: String) extends Ins
     case StopContext(name) =>
       if (contexts contains name) {
         logger.info("Shutting down context {}", name)
+
+        context.watch(contexts(name))
         contexts(name) ! PoisonPill
-        contexts.remove(name)
         resultActors.remove(name)
         sender ! ContextStopped
       } else {
         sender ! NoSuchContext
       }
+
+    case Terminated(actorRef) =>
+      val name :String = actorRef.path.name
+      logger.info("Actor terminated: " + name)
+      contexts.remove(name)
   }
 
   private def startContext(name: String, contextConfig: Config, isAdHoc: Boolean, timeoutSecs: Int = 1)
-                          (successFunc: ActorSelection => Unit)
+                          (successFunc: ActorRef => Unit)
                           (failureFunc: Throwable => Unit) {
     require(!(contexts contains name), "There is already a context named " + name)
     logger.info("Creating a SparkContext named {}", name)
 
-    implicit val timeout = Timeout(30 seconds)
-    println("ADHOC " + isAdHoc)
     val resultActorRef = if (isAdHoc) Some(globalResultActor) else None
-    val future = customManager ? new JobManagerParameter(name, contextConfig, isAdHoc, resultActorRef)
-    future.onComplete{
+    val ref = context.actorOf(Props(
+      classOf[JobManagerActor], dao, name, contextConfig, isAdHoc, resultActorRef), name)
+    (ref ? JobManagerActor.Initialize)(Timeout(timeoutSecs.second)).onComplete {
       case Failure(e: Exception) =>
-        logger.error("Exception because could not initialize JobManagerActor", e)
+        logger.error("Exception after sending Initialize to JobManagerActor", e)
+        // Make sure we try to shut down the context in case it gets created anyways
+        ref ! PoisonPill
         failureFunc(e)
-      case Success(port:Int) =>
-        val ref = context.actorSelection("akka.tcp://" + name + "@localhost:" + port + "/user/" + "JobManagerFor" + name);
-        (ref ? JobManagerActor.Initialize)(Timeout(30 seconds)).onComplete {
-          case Failure(e: Exception) =>
-            logger.error("Exception after sending Initialize to JobManagerActor", e)
-            // Make sure we try to shut down the context in case it gets created anyways
-            ref ! PoisonPill
-            failureFunc(e)
-          case Success(JobManagerActor.Initialized(contextAddress)) =>
-            logger.info("SparkContext {} initialized", name)
-            contexts(name) = ref
-            var resultActor:ActorSelection = null
-            if(isAdHoc){
-              resultActor = globalResultActor
-            } else {
-              resultActor = context.actorSelection("akka.tcp://"  + name +  "@localhost:" + port + "/user/" + "JobManagerFor" + name + "/" + "result-actor");
-            }
-            resultActors(name) = resultActor
-            successFunc(ref)
-          case Success(JobManagerActor.InitError(t)) =>
-            ref ! PoisonPill
-            failureFunc(t)
-          case x =>
-            logger.warn("Unexpected message received by startContext: {}", x)
-        }
+      case Success(JobManagerActor.Initialized(resultActor)) =>
+        logger.info("SparkContext {} initialized", name)
+        contexts(name) = ref
+        resultActors(name) = resultActor
+        successFunc(ref)
+      case Success(JobManagerActor.InitError(t)) =>
+        ref ! PoisonPill
+        failureFunc(t)
       case x =>
-        logger.warn("Unexpected message received by init JobManagerActor: {}", x)
+        logger.warn("Unexpected message received by startContext: {}", x)
     }
   }
 

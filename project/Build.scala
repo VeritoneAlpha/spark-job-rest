@@ -8,38 +8,31 @@ import com.typesafe.sbt.SbtScalariform._
 import org.scalastyle.sbt.ScalastylePlugin
 import scalariform.formatter.preferences._
 import bintray.Plugin.bintrayPublishSettings
+
 // There are advantages to using real Scala build files with SBT:
 //  - Multi-JVM testing won't work without it, for now
 //  - You get full IDE support
-object JobRestBuild extends Build {
+object JobServerBuild extends Build {
   lazy val dirSettings = Seq(
     unmanagedSourceDirectories in Compile <<= Seq(baseDirectory(_ / "src" )).join,
     unmanagedSourceDirectories in Test <<= Seq(baseDirectory(_ / "test" )).join,
     scalaSource in Compile <<= baseDirectory(_ / "src" ),
-    scalaSource in Compile <<= baseDirectory(_ / "src/main/scala" ),
     scalaSource in Test <<= baseDirectory(_ / "test" )
   )
 
   import Dependencies._
 
   lazy val akkaApp = Project(id = "akka-app", base = file("akka-app"),
-    settings = commonSettings210 ++ Assembly.settingsAkka ++ Seq(
+    settings = commonSettings210 ++ Seq(
       description := "Common Akka application stack: metrics, tracing, logging, and more.",
-      libraryDependencies ++= coreTestDeps ++ akkaDeps ++ logbackDeps
-    )
-  )
-
-  lazy val mesosApp = Project(id = "mesos-loader", base = file("mesos-loader"),
-    settings = commonSettings210 ++ Assembly.settingsAkka ++ Seq(
-        description := "Common Akka application stack: metrics, tracing, logging, and more.",
-      libraryDependencies ++= mesosDeps
+      libraryDependencies ++= coreTestDeps ++ akkaDeps
     )
   )
 
   lazy val jobServer = Project(id = "job-server", base = file("job-server"),
     settings = commonSettings210 ++ Assembly.settings ++ Revolver.settings ++ Seq(
       description  := "Spark as a Service: a RESTful job server for Apache Spark",
-      libraryDependencies ++= sparkDeps ++ slickDeps ++ coreTestDeps ++ logbackDeps ++ mesosDeps,
+      libraryDependencies ++= sparkDeps ++ slickDeps ++ coreTestDeps,
 
       // Automatically package the test jar when we run tests here
       // And always do a clean before package (package depends on clean) to clear out multiple versions
@@ -57,22 +50,10 @@ object JobRestBuild extends Build {
       // This lets us add Spark back to the classpath without assembly barfing
       fullClasspath in Revolver.reStart := (fullClasspath in Compile).value
       )
-  ) dependsOn(akkaApp, jobManager)
-
-  lazy val jobManager = Project(id = "job-manager-helper", base = file("job-manager-helper"),
-    settings = commonSettings210 ++ Assembly.settingsManagerHelper ++ Seq(
-      description  := "Spark as a Service: a RESTful job server for Apache Spark",
-      libraryDependencies ++= slickDeps ++ coreTestDeps ++ akkaDeps,
-
-      // Adds the path of extra jars to the front of the classpath
-      fullClasspath in Compile <<= (fullClasspath in Compile).map { classpath =>
-        extraJarPaths ++ classpath
-      }
-    )
   ) dependsOn(akkaApp)
 
   lazy val jobServerTestJar = Project(id = "job-server-tests", base = file("job-server-tests"),
-    settings = commonSettings210 ++ Seq(libraryDependencies ++= sparkDeps ++ mesosDeps,
+    settings = commonSettings210 ++ Seq(libraryDependencies ++= sparkDeps,
                                         publish      := {},
                                         description := "Test jar for Spark Job Server",
                                         exportJars := true)   // use the jar instead of target/classes
@@ -158,7 +139,7 @@ object JobRestBuild extends Build {
       .setPreference(PreserveDanglingCloseParenthesis, false)
   )
 
-  // This is here so we can easily switch back to Logback whenSpark fixes its log4j dependency.
+  // This is here so we can easily switch back to Logback when Spark fixes its log4j dependency.
   lazy val jobServerLogbackLogging = "-Dlogback.configurationFile=config/logback-local.xml"
   lazy val jobServerLogging = "-Dlog4j.configuration=config/log4j-local.properties"
 }

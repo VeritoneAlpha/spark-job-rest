@@ -23,7 +23,7 @@ object WordCountExample extends SparkJob {
 
   override def validate(sc: SparkContext, config: Config): SparkJobValidation = {
     Try(config.getString("input.string"))
-      .map(x => SparkJobValid())
+      .map(x => SparkJobValid)
       .getOrElse(SparkJobInvalid("No input.string config param"))
   }
 

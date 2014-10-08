@@ -6,7 +6,7 @@ import org.apache.spark.rdd.RDD
 
 
 trait SparkTestJob extends SparkJob {
-  def validate(sc: SparkContext, config: Config): SparkJobValidation = SparkJobValid()
+  def validate(sc: SparkContext, config: Config): SparkJobValidation = SparkJobValid
 }
 
 class MyErrorJob extends SparkTestJob {
@@ -79,5 +79,6 @@ object SimpleObjectJob extends SparkTestJob {
   def runJob(sc: SparkContext, config: Config): Any = {
     val rdd = sc.parallelize(Seq(1, 2, 3))
     rdd.collect().sum
+
   }
 }

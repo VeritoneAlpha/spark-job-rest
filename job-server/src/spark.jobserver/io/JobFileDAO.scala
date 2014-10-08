@@ -112,7 +112,7 @@ class JobFileDAO(config: Config) extends JobDAO {
     addJar(appName, uploadTime)
   }
 
-    private def writeJarInfo(out: DataOutputStream, jarInfo: JarInfo) {
+  private def writeJarInfo(out: DataOutputStream, jarInfo: JarInfo) {
     out.writeUTF(jarInfo.appName)
     out.writeLong(jarInfo.uploadTime.getMillis)
   }

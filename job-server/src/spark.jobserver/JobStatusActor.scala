@@ -1,12 +1,12 @@
 package spark.jobserver
 
-import akka.actor.{ActorSelection, ActorRef}
+import akka.actor.ActorRef
 import com.yammer.metrics.core.Meter
 import ooyala.common.akka.InstrumentedActor
 import ooyala.common.akka.metrics.YammerMetrics
 import scala.collection.mutable
 import scala.util.Try
-import spark.jobserver.io.{SaveJobInfo, JobInfo, JobDAO}
+import spark.jobserver.io.{ JobInfo, JobDAO }
 
 object JobStatusActor {
   case class JobInit(jobInfo: JobInfo)
@@ -17,7 +17,7 @@ object JobStatusActor {
  * It is an actor to manage job status updates
  *
  */
-class JobStatusActor(jobDaoRef: ActorSelection) extends InstrumentedActor with YammerMetrics {
+class JobStatusActor(jobDao: JobDAO) extends InstrumentedActor with YammerMetrics {
   import CommonMessages._
   import JobStatusActor._
   import spark.jobserver.util.DateUtils.dateTimeToScalaWrapper
@@ -92,7 +92,7 @@ class JobStatusActor(jobDaoRef: ActorSelection) extends InstrumentedActor with Y
     if (infos.contains(msg.jobId)) {
       infos(msg.jobId) = infoModifier(infos(msg.jobId), msg)
       logger.info("Job {} {}", msg.jobId: Any, logMessage)
-      jobDaoRef ! SaveJobInfo(infos(msg.jobId))
+      jobDao.saveJobInfo(infos(msg.jobId))
       publishMessage(msg.jobId, msg)
       updateMessageRate(msg)
       if (remove) infos.remove(msg.jobId)

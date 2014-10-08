@@ -14,7 +14,7 @@ object NoOpJob extends SparkJob {
     println("Result is " + results)
   }
 
-  def validate(sc: SparkContext, config: Config): SparkJobValidation = SparkJobValid()
+  def validate(sc: SparkContext, config: Config): SparkJobValidation = SparkJobValid
 
   def runJob(sc: SparkContext, config: Config): Any = 1
 }

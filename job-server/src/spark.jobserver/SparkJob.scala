@@ -8,11 +8,11 @@ sealed trait SparkJobValidation {
   // instead, which worked fine with tests but when run with the job-server
   // it would just hang and timeout. This is something worth investigating
   def &&(sparkValidation: SparkJobValidation): SparkJobValidation = this match {
-    case SparkJobValid() =>  sparkValidation
+    case SparkJobValid =>  sparkValidation
     case x => x
   }
 }
-case class SparkJobValid() extends SparkJobValidation
+case object SparkJobValid extends SparkJobValidation
 case class SparkJobInvalid(reason: String) extends SparkJobValidation
 
 /**

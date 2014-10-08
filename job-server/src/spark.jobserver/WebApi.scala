@@ -1,6 +1,6 @@
 package spark.jobserver
 
-import akka.actor.{ActorSelection, ActorSystem, ActorRef}
+import akka.actor.{ ActorSystem, ActorRef }
 import akka.pattern.ask
 import akka.util.Timeout
 import com.typesafe.config.{ Config, ConfigFactory, ConfigException, ConfigRenderOptions }
@@ -17,9 +17,8 @@ import spray.http.StatusCodes
 import spray.httpx.SprayJsonSupport.sprayJsonMarshaller
 import spray.json.DefaultJsonProtocol._
 import spray.routing.{ HttpService, Route, RequestContext }
-import java.util
-import java.net.ServerSocket
 import java.io.IOException
+import java.net.ServerSocket
 
 class WebApi(system: ActorSystem, config: Config, port: Int,
              jarManager: ActorRef, supervisor: ActorRef, jobInfo: ActorRef)
@@ -27,14 +26,13 @@ class WebApi(system: ActorSystem, config: Config, port: Int,
   import CommonMessages._
   import ContextSupervisor._
   import scala.concurrent.duration._
-  import java.util.concurrent.TimeUnit
 
   // Get spray-json type classes for serializing Map[String, Any]
   import ooyala.common.akka.web.JsonUtils._
 
   override def actorRefFactory: ActorSystem = system
   implicit val ec: ExecutionContext = system.dispatcher
-  implicit val ShortTimeout = Timeout(30, TimeUnit.SECONDS)
+  implicit val ShortTimeout = Timeout(3 seconds)
   val DefaultSyncTimeout = Timeout(10 seconds)
   val DefaultJobLimit = 50
   val StatusKey = "status"
@@ -89,6 +87,8 @@ class WebApi(system: ActorSystem, config: Config, port: Int,
   }
 
 
+
+
   def findAvailablePort(): Integer = {
     val notFound = true;
     var currentTry = lastUsedPort;
@@ -136,6 +136,7 @@ class WebApi(system: ActorSystem, config: Config, port: Int,
             complete(StatusCodes.BadRequest, errMap("context name must start with letters"))
           } else {
             parameterMap { (params) =>
+
               val myMutableMap = collection.mutable.Map() ++ params
               var port = ""
               if(!myMutableMap.get("spark.ui.port").isDefined){
@@ -146,8 +147,8 @@ class WebApi(system: ActorSystem, config: Config, port: Int,
                 port = myMutableMap.get("spark.ui.port").get
                 logger.info("spark.ui.port was user defined to port " + port)
               }
-              val config = ConfigFactory.parseMap(myMutableMap.asJava)
 
+              val config = ConfigFactory.parseMap(myMutableMap.asJava)
               val future = supervisor ? AddContext(contextName, config)
               respondWithMediaType(MediaTypes.`application/json`) { ctx =>
                 future.map {
@@ -297,7 +298,6 @@ class WebApi(system: ActorSystem, config: Config, port: Int,
                 val jobManager = getJobManagerForContext(contextOpt, contextConfig, classPath)
                 val events = if (async) asyncEvents else syncEvents
                 val timeout = timeoutOpt.map(t => Timeout(t.seconds)).getOrElse(DefaultSyncTimeout)
-                jobManager.get ? "TestBeforeStart"
                 val future = jobManager.get.ask(
                   JobManagerActor.StartJob(appName, classPath, jobConfig, events))(timeout)
                 respondWithMediaType(MediaTypes.`application/json`) { ctx =>
@@ -321,7 +321,7 @@ class WebApi(system: ActorSystem, config: Config, port: Int,
                       ctx.complete(503, Map(StatusKey -> "NO SLOTS AVAILABLE", ResultKey -> errorMsg))
                     case ContextInitError(e) => ctx.complete(500, errMap(e, "CONTEXT INIT FAILED"))
                   }.recover {
-                      case e: Exception => ctx.complete(500, errMap(e, "ERROR"))
+                    case e: Exception => ctx.complete(500, errMap(e, "ERROR"))
                   }
                 }
               } catch {
@@ -377,7 +377,7 @@ class WebApi(system: ActorSystem, config: Config, port: Int,
 
   private def getJobManagerForContext(context: Option[String],
                                       contextConfig: Config,
-                                      classPath: String): Option[ActorSelection] = {
+                                      classPath: String): Option[ActorRef] = {
     import ContextSupervisor._
     val msg =
       if (context.isDefined) {
@@ -386,7 +386,7 @@ class WebApi(system: ActorSystem, config: Config, port: Int,
         GetAdHocContext(classPath, contextConfig)
       }
     Await.result(supervisor ? msg, contextTimeout.seconds) match {
-      case (manager: ActorSelection, resultActor: ActorSelection) => Some(manager)
+      case (manager: ActorRef, resultActor: ActorRef) => Some(manager)
       case NoSuchContext                              => None
       case ContextInitError(err)                      => throw new RuntimeException(err)
     }

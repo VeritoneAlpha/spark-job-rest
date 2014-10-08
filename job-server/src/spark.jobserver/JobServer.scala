@@ -2,13 +2,10 @@ package spark.jobserver
 
 import akka.actor.ActorSystem
 import akka.actor.Props
-import akka.util.Timeout
 import com.typesafe.config.{Config, ConfigFactory}
 import java.io.File
-import spark.jobserver.io.{JobDAOActor, JobDAO}
+import spark.jobserver.io.JobDAO
 import org.slf4j.LoggerFactory
-import akka.pattern.ask
-import java.util.concurrent.TimeUnit
 
 /**
  * The Spark Job Server is a web service that allows users to submit and run Spark jobs, check status,
@@ -28,7 +25,6 @@ import java.util.concurrent.TimeUnit
  */
 object JobServer {
   val logger = LoggerFactory.getLogger(getClass)
-  implicit val ShortTimeout = Timeout(5, TimeUnit.SECONDS)
 
   // Allow custom function to create ActorSystem.  An example of why this is useful:
   // we can have something that stores the ActorSystem so it could be shut down easily later.
@@ -42,21 +38,20 @@ object JobServer {
       }
       ConfigFactory.parseFile(configFile).withFallback(defaultConfig)
     } else {
-      throw new RuntimeException("Configuration File Parameter is not present!!!")
+      defaultConfig
     }
     logger.info("Starting JobServer with config {}", config.getConfig("spark").root.render())
     val port = config.getInt("spark.jobserver.port")
 
     // TODO: Hardcode for now to get going. Make it configurable later.
     val system = makeSystem(config)
-//    val clazz = Class.forName(config.getString("spark.jobserver.jobdao"))
-//    val ctor = clazz.getDeclaredConstructor(Class.forName("com.typesafe.config.Config"))
-//    val jobDAO = ctor.newInstance(config).asInstanceOf[JobDAO]
-    val jobDaoRef = system.actorOf(Props(classOf[JobDAOActor], config), "jobDao")
+    val clazz = Class.forName(config.getString("spark.jobserver.jobdao"))
+    val ctor = clazz.getDeclaredConstructor(Class.forName("com.typesafe.config.Config"))
+    val jobDAO = ctor.newInstance(config).asInstanceOf[JobDAO]
 
-    val jarManager = system.actorOf(Props(classOf[JarManager], jobDaoRef), "jar-manager")
-    val supervisor = system.actorOf(Props(classOf[LocalContextSupervisorActor], jobDaoRef, args(0)), "context-supervisor")
-    val jobInfo = system.actorOf(Props(classOf[JobInfoActor], jobDaoRef, supervisor), "job-info")
+    val jarManager = system.actorOf(Props(classOf[JarManager], jobDAO), "jar-manager")
+    val supervisor = system.actorOf(Props(classOf[LocalContextSupervisorActor], jobDAO), "context-supervisor")
+    val jobInfo = system.actorOf(Props(classOf[JobInfoActor], jobDAO, supervisor), "job-info")
     // Create initial contexts
     supervisor ! ContextSupervisor.AddContextsFromConfig
     new WebApi(system, config, port, jarManager, supervisor, jobInfo).start()

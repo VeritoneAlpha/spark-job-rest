@@ -37,7 +37,7 @@ class CommonRoutesSpec extends FunSpec with ShouldMatchers with ScalatestRouteTe
       Get("/metricz") ~> commonRoutes ~> check {
         status === OK
 
-        val metricsMap = JsonUtils.mapFromJson(responseAs[String])
+        val metricsMap = JsonUtils.mapFromJson(entityAs[String])
         val classMetrics = metricsMap(getClass.getName).asInstanceOf[Map[String, Any]]
 
         classMetrics.keys.toSet should equal (Set("test-counter", "test-meter", "test-hist", "test-timer", "test-gauge"))

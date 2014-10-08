@@ -28,7 +28,7 @@ object LongPiJob extends SparkJob {
   }
 
   override def validate(sc: SparkContext, config: Config): SparkJobValidation = {
-    SparkJobValid()
+    SparkJobValid
   }
 
   override def runJob(sc: SparkContext, config: Config): Any = {
