@@ -32,15 +32,14 @@ class WebApi(system: ActorSystem, config: Config, port: Int,
 
   override def actorRefFactory: ActorSystem = system
   implicit val ec: ExecutionContext = system.dispatcher
-  implicit val ShortTimeout = Timeout(3 seconds)
-  val DefaultSyncTimeout = Timeout(10 seconds)
+  implicit val ShortTimeout = Timeout(40 seconds)
+  val DefaultSyncTimeout = Timeout(40 seconds)
   val DefaultJobLimit = 50
   val StatusKey = "status"
   val ResultKey = "result"
   var lastUsedPort = 16000;
 
-  val contextTimeout = Try(config.getMilliseconds("spark.jobserver.context-creation-timeout").toInt / 1000)
-                         .getOrElse(15)
+  val contextTimeout = 40
 
   val logger = LoggerFactory.getLogger(getClass)
 
