@@ -12,7 +12,6 @@ target/*
 *.orig
 *.txt~
 *.sh~
-*.conf~
 *.scala~
 *.md~
 .metadata
