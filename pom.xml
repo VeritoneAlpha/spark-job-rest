@@ -77,30 +77,6 @@
 			<artifactId>jsr305</artifactId>
 			<version>2.0.3</version>
 		</dependency>
-		<!--<dependency>-->
-			<!--<groupId>org.tachyonproject</groupId>-->
-			<!--<artifactId>tachyon</artifactId>-->
-			<!--<version>0.5.0</version>-->
-            <!--<scope>provided</scope>-->
-			<!--<exclusions>-->
-				<!--<exclusion>-->
-					<!--<groupId>org.eclipse.jetty</groupId>-->
-					<!--<artifactId>jetty-server</artifactId>-->
-				<!--</exclusion>-->
-				<!--<exclusion>-->
-					<!--<groupId>org.eclipse.jetty</groupId>-->
-					<!--<artifactId>jetty-servlet</artifactId>-->
-				<!--</exclusion>-->
-				<!--<exclusion>-->
-					<!--<groupId>org.eclipse.jetty</groupId>-->
-					<!--<artifactId>jetty-webapp</artifactId>-->
-				<!--</exclusion>-->
-				<!--<exclusion>-->
-					<!--<groupId>org.eclipse.jetty.orbit</groupId>-->
-					<!--<artifactId>javax.servlet</artifactId>-->
-				<!--</exclusion>-->
-			<!--</exclusions>-->
-		<!--</dependency>-->
 
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
@@ -119,34 +95,6 @@
 			<artifactId>log4j</artifactId>
 			<version>1.2.17</version>
 		</dependency>
-		<!--<dependency>-->
-			<!--<groupId>org.springframework</groupId>-->
-			<!--<artifactId>spring-context</artifactId>-->
-			<!--<version>${org.springframework.version}</version>-->
-			<!--<exclusions>-->
-				<!--&lt;!&ndash; Exclude Commons Logging in favor of SLF4j &ndash;&gt;-->
-				<!--<exclusion>-->
-					<!--<groupId>commons-logging</groupId>-->
-					<!--<artifactId>commons-logging</artifactId>-->
-				<!--</exclusion>-->
-			<!--</exclusions>-->
-		<!--</dependency>-->
-		<!--<dependency>-->
-			<!--<groupId>org.springframework.data</groupId>-->
-			<!--<artifactId>spring-data-hadoop</artifactId>-->
-			<!--<version>1.0.0.RELEASE</version>-->
-			<!--<exclusions>-->
-				<!--<exclusion>-->
-					<!--<artifactId>hadoop-core</artifactId>-->
-					<!--<groupId>org.apache.hadoop</groupId>-->
-				<!--</exclusion>-->
-			<!--</exclusions>-->
-		<!--</dependency>-->
-		<!--<dependency>-->
-			<!--<groupId>org.springframework</groupId>-->
-			<!--<artifactId>spring-jdbc</artifactId>-->
-			<!--<version>3.2.3.RELEASE</version>-->
-		<!--</dependency>-->
 
         <dependency>
             <groupId>org.apache.spark</groupId>
@@ -154,17 +102,10 @@
             <version>1.1.0-cdh5.2.0</version>
             <scope>provided</scope>
             <exclusions>
-                <!-- <exclusion> <groupId>org.spark-project.akka</groupId> <artifactId>akka-actor_2.10</artifactId>
-                    </exclusion> <exclusion> <groupId>org.spark-project.akka</groupId> <artifactId>akka-remote_2.10</artifactId>
-                    </exclusion> -->
                 <exclusion>
                     <groupId>org.apache.zookeeper</groupId>
                     <artifactId>zookeeper</artifactId>
                 </exclusion>
-                <!--<exclusion>-->
-                    <!--<groupId>org.apache.hadoop</groupId>-->
-                    <!--<artifactId>hadoop-client</artifactId>-->
-                <!--</exclusion>-->
                 <exclusion>
                     <artifactId>slf4j-log4j12</artifactId>
                     <groupId>org.slf4j</groupId>
@@ -175,35 +116,6 @@
                 </exclusion>
             </exclusions>
         </dependency>
-
-		<!--<dependency>-->
-			<!--<groupId>org.apache.hadoop</groupId>-->
-			<!--<artifactId>hadoop-common</artifactId>-->
-            <!--&lt;!&ndash;<version>2.3.0-mr1-cdh5.1.2</version>&ndash;&gt;-->
-			<!--<version>2.5.0-cdh5.2.0</version>-->
-			<!--<exclusions>-->
-				<!--<exclusion>-->
-					<!--<groupId>asm</groupId>-->
-					<!--<artifactId>asm</artifactId>-->
-				<!--</exclusion>-->
-				<!--<exclusion>-->
-					<!--<artifactId>slf4j-log4j12</artifactId>-->
-					<!--<groupId>org.slf4j</groupId>-->
-				<!--</exclusion>-->
-				<!--<exclusion>-->
-					<!--<groupId>org.jboss.netty</groupId>-->
-					<!--<artifactId>netty</artifactId>-->
-				<!--</exclusion>-->
-				<!--<exclusion>-->
-					<!--<groupId>jdk.tools</groupId>-->
-					<!--<artifactId>jdk.tools</artifactId>-->
-				<!--</exclusion>-->
-				<!--<exclusion>-->
-					<!--<groupId>junit</groupId>-->
-					<!--<artifactId>junit</artifactId>-->
-				<!--</exclusion>-->
-			<!--</exclusions>-->
-		<!--</dependency>-->
 
         <dependency>
             <groupId>com.typesafe</groupId>
@@ -425,25 +337,6 @@
 					<skipTests>true</skipTests>
 				</configuration>
 			</plugin>
-
-			<!--<plugin>-->
-				<!--<groupId>org.scalatest</groupId>-->
-				<!--<artifactId>scalatest-maven-plugin</artifactId>-->
-				<!--<version>1.0</version>-->
-				<!--<configuration>-->
-					<!--<reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>-->
-					<!--<junitxml>.</junitxml>-->
-					<!--<filereports>WDF TestSuite.txt</filereports>-->
-				<!--</configuration>-->
-				<!--<executions>-->
-					<!--<execution>-->
-						<!--<id>test</id>-->
-						<!--<goals>-->
-							<!--<goal>test</goal>-->
-						<!--</goals>-->
-					<!--</execution>-->
-				<!--</executions>-->
-			<!--</plugin>-->
 
 		</plugins>
 
