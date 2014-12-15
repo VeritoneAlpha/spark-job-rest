@@ -16,6 +16,9 @@ import server.domain.actors.getValueFromConfig
 import scala.concurrent.ExecutionContext
 import scala.util.Success
 import ExecutionContext.Implicits.global
+import JsonUtils._
+import spray.httpx.SprayJsonSupport.sprayJsonMarshaller
+import spray.json.DefaultJsonProtocol._
 
 /**
  * Created by raduc on 03/11/14.
@@ -24,6 +27,9 @@ import ExecutionContext.Implicits.global
 
   implicit val system = originalSystem
   implicit val timeout = Timeout(60000)
+
+  var StateKey = "state"
+  var ResultKey = "result"
 
 
   val webPort = getValueFromConfig(config, "appConf.web.services.port", 8097)
@@ -45,13 +51,13 @@ import ExecutionContext.Implicits.global
 
   def jobRoute: Route = pathPrefix("job"){
     get{
-        parameters('uuid) { uuid =>
+        parameters('jobId) { uuid =>
           respondWithMediaType(MediaTypes.`application/json`) { ctx =>
             val resultFuture = jobManagerActor ? JobStatusEnquiry(uuid)
             resultFuture.map{
-              case x:JobRunSuccess => ctx.complete(StatusCodes.OK, "Finished")
-              case x:JobRunError => ctx.complete(StatusCodes.InternalServerError, s"Error: ${x.errorMessage}")
-              case x:JobStarted => ctx.complete(StatusCodes.OK, "Running")
+              case x:JobRunSuccess => ctx.complete(StatusCodes.OK, resultToTable("Finished", x.result))
+              case x:JobRunError => ctx.complete(StatusCodes.InternalServerError, resultToTable("Error", x.errorMessage))
+              case x:JobStarted => ctx.complete(StatusCodes.OK, resultToTable("Running", ""))
               case x:JobDoesNotExist => ctx.complete(StatusCodes.BadRequest, "JobId does not exist!")
               case x:String => ctx.complete(StatusCodes.BadRequest, x)
             }
@@ -127,6 +133,9 @@ import ExecutionContext.Implicits.global
       }
     }
 
+  }
 
+  def resultToTable(state: String, result: Any): Map[String, Any] = {
+    Map(StateKey -> state, ResultKey -> result)
   }
 }

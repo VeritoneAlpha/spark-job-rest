@@ -27,7 +27,7 @@ object JobActor {
 
   case class JobRunError(errorMessage: String) extends JobStatus
 
-  case class JobRunSuccess() extends JobStatus
+  case class JobRunSuccess(result:Any) extends JobStatus
 
   case class JobStarted() extends JobStatus
 

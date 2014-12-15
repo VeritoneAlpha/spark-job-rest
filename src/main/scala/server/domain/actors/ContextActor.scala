@@ -88,7 +88,7 @@ class ContextActor(jarsPath: Array[String], localConfig: Config) extends Actor w
         case Success(result) => {
           println(s"Finished running job : runningClass=${job.runningClass} contextName=${job.contextName} uuid=${job.uuid} ")
           println(s"Sending message JS to actor $from")
-          from ! UpdateJobStatus(job.uuid, JobRunSuccess())
+          from ! UpdateJobStatus(job.uuid, JobRunSuccess(result))
         }
         case Failure(e:Throwable) => {
           e.printStackTrace()
