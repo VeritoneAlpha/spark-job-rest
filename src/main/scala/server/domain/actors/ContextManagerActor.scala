@@ -28,6 +28,7 @@ object ContextManagerActor {
   case class ContextInitialized(port: String)
   case class DeleteContext(contextName: String)
   case class GetContext(contextName: String)
+  case class GetAllContexts()
   case class NoSuchContext()
   case class ContextAlreadyExists()
   case class DestroyProcess(process: Process)
@@ -99,6 +100,11 @@ class ContextManagerActor(defaultConfig: Config) extends Actor with ActorLogging
       } else {
         sender ! NoSuchContext
       }
+    }
+
+    case GetAllContexts() => {
+      println(s"Received GetAllContexts message.")
+      sender ! contextMap.keys.mkString(",")
     }
 
   }
