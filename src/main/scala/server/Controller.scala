@@ -51,15 +51,17 @@ import spray.json.DefaultJsonProtocol._
 
   def jobRoute: Route = pathPrefix("job"){
     get{
-        parameters('jobId) { uuid =>
+        parameters('contextName, 'jobId) { (contextName, jobId) =>
           respondWithMediaType(MediaTypes.`application/json`) { ctx =>
-            val resultFuture = jobManagerActor ? JobStatusEnquiry(uuid)
+            val resultFuture = jobManagerActor ? JobStatusEnquiry(contextName, jobId)
             resultFuture.map{
               case x:JobRunSuccess => ctx.complete(StatusCodes.OK, resultToTable("Finished", x.result))
               case x:JobRunError => ctx.complete(StatusCodes.InternalServerError, resultToTable("Error", x.errorMessage))
               case x:JobStarted => ctx.complete(StatusCodes.OK, resultToTable("Running", ""))
               case x:JobDoesNotExist => ctx.complete(StatusCodes.BadRequest, "JobId does not exist!")
-              case x:String => ctx.complete(StatusCodes.BadRequest, x)
+              case NoSuchContext => ctx.complete(StatusCodes.BadRequest, "Context does not exist!")
+              case e:Throwable => ctx.complete(StatusCodes.InternalServerError, e)
+              case x:String => ctx.complete(StatusCodes.InternalServerError, x)
             }
           }
         }

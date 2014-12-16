@@ -6,9 +6,10 @@ import com.typesafe.config.Config
 import org.apache.commons.lang.exception.ExceptionUtils
 import org.apache.spark.SparkContext
 import ContextManagerActor.{DeleteContext, IsAwake}
-import JobActor.{JobRunError, JobRunSuccess, RunJob, UpdateJobStatus}
+import server.domain.actors.JobActor._
 import server.domain.actors.ContextActor._
 
+import scala.collection.mutable.{SynchronizedMap, HashMap}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
@@ -27,6 +28,8 @@ class ContextActor(jarsPath: Array[String], localConfig: Config) extends Actor w
 
   var sparkContext: SparkContext = _
   var defaultConfig: Config = _
+  var jobStateMap = new HashMap[String, JobStatus]() with SynchronizedMap[String, JobStatus]
+
 
   startWatchingManagerActor()
 
@@ -68,8 +71,7 @@ class ContextActor(jarsPath: Array[String], localConfig: Config) extends Actor w
 
     case job:RunJob => {
       println(s"Received RunJob message : runningClass=${job.runningClass} contextName=${job.contextName} uuid=${job.uuid} ")
-
-      val from = sender
+      jobStateMap += (job.uuid -> JobStarted())
 
       Future {
           val classLoader = Thread.currentThread.getContextClassLoader
@@ -87,12 +89,11 @@ class ContextActor(jarsPath: Array[String], localConfig: Config) extends Actor w
       } andThen {
         case Success(result) => {
           println(s"Finished running job : runningClass=${job.runningClass} contextName=${job.contextName} uuid=${job.uuid} ")
-          println(s"Sending message JS to actor $from")
-          from ! UpdateJobStatus(job.uuid, JobRunSuccess(result))
+          jobStateMap += (job.uuid -> JobRunSuccess(result))
         }
         case Failure(e:Throwable) => {
           e.printStackTrace()
-          from ! UpdateJobStatus(job.uuid, JobRunError(ExceptionUtils.getStackTrace(e)))
+          jobStateMap += (job.uuid -> JobRunError(ExceptionUtils.getStackTrace(e)))
           println(s"Error running job : runningClass=${job.runningClass} contextName=${job.contextName} uuid=${job.uuid} ")
         }
       }
@@ -104,6 +105,11 @@ class ContextActor(jarsPath: Array[String], localConfig: Config) extends Actor w
         gracefullyShutdown
       }
     }
+
+    case JobStatusEnquiry(contextName, jobId) => {
+      sender ! jobStateMap.getOrElse(jobId, JobDoesNotExist())
+    }
+
     case x @ _ => {
       println(s"Received UNKNOWN message type $x")
     }

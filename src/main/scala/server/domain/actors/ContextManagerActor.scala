@@ -120,6 +120,7 @@ class ContextManagerActor(defaultConfig: Config) extends Actor with ActorLogging
       futureResult.onComplete{
         case Success(value) => {
           println(s"Got the callback, meaning = $value")
+
           val future = actorRef ? InitializeContext(contextName, config)
           future.onComplete {
             case Success(value) => {
@@ -132,7 +133,6 @@ class ContextManagerActor(defaultConfig: Config) extends Actor with ActorLogging
                 case e:FailedInit => {
                   println(s"Init failed for context $contextName");
                   sender ! e
-
                   processMap.remove(contextName).foreach(p => scheduleDestroyMessage(p))
                 }
               }
