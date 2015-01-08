@@ -1,6 +1,6 @@
 ## Features:
 
-Supports multiple spark contexts.
+**Supports multiple spark contexts.**
 
 The project spins new processes in order to run and manage multiple spark contexts. Inter-process comunication is achieved with the use of akka actors.
 
