@@ -13,7 +13,7 @@ mvn clean install
 
 ## Configure Spark-job-rest
 
-In order to configure SJR the following file need to be edited: resources/application.conf
+In order to configure SJR the following file needs to be edited: resources/application.conf
 
 * Configure the default spark properties for context creation
 ``` 
@@ -32,6 +32,8 @@ web.services.port=8097
 ........
 }
 ```
+
+Also, SPARK_HOME variable must be edited in the settings.sh file. It must be pointed to the local Spark deployment folder. The SJR can be run from outside the Spark cluster, but you need to at least copy the deployment folder from one of the slaves or master nodes.
 
 ## Run Spark-job-rest
 
