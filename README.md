@@ -42,10 +42,12 @@ After editing all the configuration files SJR can be run by executing the script
 
 1. POST /context/{contextName}  -  Create Context
   * Body:  Raw entity with key-value pairs. 
-  * Jars key is required and optional you can set any spark config or the config for the driver JVM memory:
-  * jars="/home/ubuntu/example.jar:/home/ubuntu/spark-job-project.jar” - Multiple jars path separated with the ':'   character. These jars will be added at creation time to the class path of the context process.
-  * spark.executor.memory=2g
-  * driver.xmxMemory = 1g
+  * Jars key is required and optional you can set any spark config or the config for the driver JVM memory. As value a String with multiple jars path separated with the ':' character. These jars will be added at creation time to the class path of the context process.
+```
+ jars="/home/ubuntu/example.jar:/home/ubuntu/spark-job-project.jar”
+ spark.executor.memory=2g
+ driver.xmxMemory = 1g
+```
 
 2.  GET /context/{contextName}  -  Enquiry if context exists. 
 
