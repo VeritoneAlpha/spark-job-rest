@@ -2,11 +2,14 @@
 
 **Supports multiple spark contexts.**
 
-The project spins new processes in order to run and manage multiple spark contexts. Inter-process comunication is achieved with the use of akka actors.
+The project launches new processes in order to run and manage multiple spark contexts. Inter-process comunication is achieved with akka actors.
 
 ## Building Spark-job-rest (SJR)
 
-The project has maven nature.
+The project is build with maven.
+```
+mvn clean install
+```
 
 ## Configure Spark-job-rest
 
@@ -54,7 +57,7 @@ After editing all the configuration files SJR can be run by executing the script
 
 **Jobs**
 
-- POST 10.0.2.110:8097/job?runningClass={runningClass}&context={contextName}  - Job Submission 
+- POST /job?runningClass={runningClass}&context={contextName}  - Job Submission 
 
   * Body:  Raw entity with key-value pairs. Here you can set any configs that will be found in the config parameter received by the validate and run methods.
 
