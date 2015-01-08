@@ -40,22 +40,25 @@ After editing all the configuration files SJR can be run by executing the script
 
 **Contexts**
 
-1. POST /context/{contextName}  -  Create Context
-  * Body:  Raw entity with key-value pairs. 
-  * Jars key is required and optional you can set any spark config or the config for the driver JVM memory. As value a String with multiple jars path separated with the ':' character. These jars will be added at creation time to the class path of the context process.
+- POST /context/{contextName}  -  Create Context
 ```
+ Body:  Raw entity with key-value pairs. 
+ Jars key is required and optional you can set any spark config or the config for the driver JVM memory. As value a String with multiple jars path separated with the ':' character. These jars will be added at creation time to the class path of the context process.
+ 
  jars="/home/ubuntu/example.jar:/home/ubuntu/spark-job-project.jar”
  spark.executor.memory=2g
  driver.xmxMemory = 1g
 ```
 
-2.  GET /context/{contextName}  -  Enquiry if context exists. 
+-  GET /context/{contextName}  -  Enquiry if context exists. 
 
-3. DELETE /context/{contextName}  -  Delete Context
+- DELETE /context/{contextName}  -  Delete Context
 
 **Jobs**
 
-1. POST 10.0.2.110:8097/job?runningClass={runningClass}&context={contextName}  - Job Submission 
-  * Body:  Raw entity with key-value pairs. Here you can set any configs that will be found in the config parameter received by the validate and run methods.
+- POST 10.0.2.110:8097/job?runningClass={runningClass}&context={contextName}  - Job Submission 
+```
+Body:  Raw entity with key-value pairs. Here you can set any configs that will be found in the config parameter received by the validate and run methods.
+```
 
-2. GET /job?jobId={uuid}&contextName={contextName} - Gets the result or status of a specific job
+- GET /job?jobId={uuid}&contextName={contextName} - Gets the result or status of a specific job
