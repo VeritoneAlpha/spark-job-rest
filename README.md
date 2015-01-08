@@ -38,7 +38,7 @@ After editing all the configuration files SJR can be run by executing the script
 
 ## API
 
-** Contexts **
+**Contexts**
 
 1. POST /context/{contextName}  -  Create Context
   * Body:  Raw entity with key-value pairs. 
@@ -53,7 +53,7 @@ After editing all the configuration files SJR can be run by executing the script
 
 3. DELETE /context/{contextName}  -  Delete Context
 
-** Jobs **
+**Jobs**
 
 1. POST 10.0.2.110:8097/job?runningClass={runningClass}&context={contextName}  - Job Submission 
   * Body:  Raw entity with key-value pairs. Here you can set any configs that will be found in the config parameter received by the validate and run methods.
