@@ -59,3 +59,27 @@ After editing all the configuration files SJR can be run by executing the script
   * Body:  Raw entity with key-value pairs. Here you can set any configs that will be found in the config parameter received by the validate and run methods.
 
 - GET /job?jobId={uuid}&contextName={contextName} - Gets the result or status of a specific job
+
+## Create Spark Job Project
+
+Add maven Spark-Job-Rest dependency:
+```
+<dependency>
+    <groupId>com.xpatterns</groupId>
+    <artifactId>spark-job-rest</artifactId>
+    <version>0.2.0</version>
+</dependency>
+```
+
+To create a job that can be submitted through the server, the class must implement the SparkJob trait.
+
+```
+class Example extends SparkJob {
+    override def runJob(sc:SparkContext, jobConfig: Config): Any = { ... }
+    override def validate(sc:SparkContext, config: Config): SparkJobValidation = { ... }
+}
+```
+
+- runJob method contains the implementation of the Job. SparkContext and Config objects are provided through parameters.
+- validate method allows for an initial validation. In order to run the job return SparkJobValid(), otherwise return SparkJobInvalid(message).
+
