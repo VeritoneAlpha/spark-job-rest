@@ -1,8 +1,8 @@
 ## Features:
 
-**Supports multiple spark contexts.**
+**Supports multiple spark contexts created from the same node**
 
-The project launches new processes in order to run and manage multiple spark contexts. Inter-process comunication is achieved with akka actors.
+The project launches a new process for each Spark context/application, with its own driver memory setting and its own driver log. Each driver JVM is created with its own Spark UI port, sent back to the api caller. Inter-process communication is achieved with akka actors, and each process is shut down when a Spark context/application is deleted.
 
 ## Building Spark-job-rest (SJR)
 
