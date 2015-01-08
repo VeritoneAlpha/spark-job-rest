@@ -24,19 +24,19 @@ After editing all the configuration files SJR can be run by executing the script
 
 # Contexts
 
-POST /context/{contextName}  -  Create Context
+* POST /context/{contextName}  -  Create Context
 Body:  Raw entity with key-value pairs. Jars key is required and optional you can set any spark config or the config for the driver JVM memory:
 jars="/home/ubuntu/example.jar:/home/ubuntu/spark-job-project.jar”   -  Multiple jars path separated with the ' : ‘ character. These jars will be added at creation time to the class path of the context process.
 spark.executor.memory=2g
 driver.xmxMemory = 1g
 
-GET /context/{contextName}  -  Enquiry if context exists. 
+* GET /context/{contextName}  -  Enquiry if context exists. 
 
-DELETE /context/{contextName}  -  Delete Context
+* DELETE /context/{contextName}  -  Delete Context
 
 # Jobs
 
-POST 10.0.2.110:8097/job?runningClass={runningClass}&context={contextName}  - Job Submission 
+* POST 10.0.2.110:8097/job?runningClass={runningClass}&context={contextName}  - Job Submission 
 Body:  Raw entity with key-value pairs. Here you can set any configs that will be found in the config parameter received by the validate and run methods.
 
-GET /job?jobId={uuid}&contextName={contextName} - Gets the result or status of a specific job
+* GET /job?jobId={uuid}&contextName={contextName} - Gets the result or status of a specific job
