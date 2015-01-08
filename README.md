@@ -14,7 +14,7 @@ The project has maven nature.
 
 In order to configure SJR the following file need to be edited: resources/application.conf
 
-* Configure the default spark properties for context creation
+> Configure the default spark properties for context creation
 > #spark default configuration
 > spark.executor.memory=2g
 > spark.mesos.coarse=false
@@ -22,7 +22,7 @@ In order to configure SJR the following file need to be edited: resources/applic
 > driver.xmxMemory = 1g
 
 
-* Configure settings like web server port and akka system ports
+> Configure settings like web server port and akka system ports
 > #application configuration
 > appConf{
 >	#the port on which to deploy the apis
