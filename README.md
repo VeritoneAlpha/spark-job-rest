@@ -44,14 +44,14 @@ After editing all the configuration files SJR can be run by executing the script
 - POST /context/{contextName}  -  Create Context
 
  * Body:  Raw entity with key-value pairs. 
- * Jars key is required and optional you can set any spark config or the config for the driver JVM memory. As value a String with multiple jars path separated with the ':' character. These jars will be added at creation time to the class path of the context process.
+ * jars key is required and it should be in the form of a ':' separated list of jar paths. These jars will be added at Spark context creation time to the class path of the newly created context's JVM process.
   ``` 
  jars="/home/ubuntu/example.jar:/home/ubuntu/spark-job-project.jar”
  spark.executor.memory=2g
  driver.xmxMemory = 1g
   ```
 
-- GET /context/{contextName}  -  Enquiry if context exists. 
+- GET /context/{contextName}  -  returns Context exists. | No such context.
 
 - DELETE /context/{contextName}  -  Delete Context
 
@@ -59,7 +59,7 @@ After editing all the configuration files SJR can be run by executing the script
 
 - POST /job?runningClass={runningClass}&context={contextName}  - Job Submission 
 
-  * Body:  Raw entity with key-value pairs. Here you can set any configs that will be found in the config parameter received by the validate and run methods.
+  * Body:  Raw entity with key-value pairs. Here you can set any configuration properties that will be passed to the config parameter of the validate and run methods of the provided jar (see the SparkJob definition below)
 
 - GET /job?jobId={uuid}&contextName={contextName} - Gets the result or status of a specific job
 
