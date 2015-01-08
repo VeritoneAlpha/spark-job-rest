@@ -4,7 +4,7 @@ A new implentation of Spark-Server.
 
 Supports multiple spark contexts.
 
-The project spins new processes in order to run and manage multiple spark contexts. Inter-process comunication is done with akka actors.
+The project spins new processes in order to run and manage multiple spark contexts. Inter-process comunication is achieved with the use of akka actors.
 
 ## Building Spark-job-rest (SJR)
 
@@ -27,7 +27,7 @@ After editing all the configuration files SJR can be run by executing the script
 1. POST /context/{contextName}  -  Create Context
   * Body:  Raw entity with key-value pairs. 
   * Jars key is required and optional you can set any spark config or the config for the driver JVM memory:
-  * jars="/home/ubuntu/example.jar:/home/ubuntu/spark-job-project.jar”   -  Multiple jars path separated with the ' : ‘   character. These jars will be added at creation time to the class path of the context process.
+  * jars="/home/ubuntu/example.jar:/home/ubuntu/spark-job-project.jar” - Multiple jars path separated with the ':'   character. These jars will be added at creation time to the class path of the context process.
   * spark.executor.memory=2g
   * driver.xmxMemory = 1g
 
