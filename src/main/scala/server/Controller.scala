@@ -115,13 +115,13 @@ import spray.json.DefaultJsonProtocol._
         }
     } ~
     get {
-      val resultFuture = contextManagerActor ? GetAllContexts()
-      respondWithMediaType(MediaTypes.`application/json`) { ctx =>
-        resultFuture.map {
-          case s: String => ctx.complete(StatusCodes.OK, s)
-          case e: Any => ctx.complete(StatusCodes.InternalServerError, e.toString)
+        respondWithMediaType(MediaTypes.`application/json`) { ctx =>
+          val resultFuture = contextManagerActor ? GetAllContexts()
+          resultFuture.map {
+            case s: String => ctx.complete(StatusCodes.OK, s)
+            case e: Any => ctx.complete(StatusCodes.InternalServerError, e.toString)
+          }
         }
-      }
     } ~
     delete {
       path(Segment) { contextName =>
