@@ -88,3 +88,53 @@ class Example extends SparkJob {
 - runJob method contains the implementation of the Job. SparkContext and Config objects are provided through parameters.
 - validate method allows for an initial validation. In order to run the job return SparkJobValid(), otherwise return SparkJobInvalid(message).
 
+## Example
+
+An example for this project can be found here: ```spark-job-rest/example/example-job```. In order to package it, run 
+``` mvn clean install ```
+
+**Create a context**
+```
+$ curl -X POST -d "jars=/Users/raduc/projects/spark-job-rest/example/example-job/target/example-job.jar" 'localhost:8097/context/test-context'
+
+16001
+```
+
+The received answer ```16001``` represents the spark ui port for your application.
+
+**Check if context exists**
+
+```
+curl 'localhost:8097/context/test-context'
+
+Context exists.
+```
+
+**Run job** - The example job creates an RDD from a Range(0,input) and applies count on it.
+
+```
+$ curl -X POST -d "input=10000" 'localhost:8097/job?runningClass=com.job.SparkJobImplemented&context=test-context'
+
+bf880779-f5dc-4ff1-823e-c4bc72621385
+```
+
+The received answer ```bf880779-f5dc-4ff1-823e-c4bc72621385``` represents the jobId. This id can be used to query for the job status/results.
+
+**Query for results**
+
+```
+$ curl 'localhost:8097/job?contextName=test-context&jobId=bf880779-f5dc-4ff1-823e-c4bc72621385'
+
+{
+  "state": "Finished",
+  "result": 10000
+}
+```
+
+**Delete context**
+
+```
+curl -X DELETE 'localhost:8097/context/test-context'
+
+Context deleted.
+```
