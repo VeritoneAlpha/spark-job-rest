@@ -40,11 +40,13 @@ class ContextManagerActor(defaultConfig: Config) extends Actor with ActorLogging
 
   var lastUsedPort = getValueFromConfig(defaultConfig, "appConf.actor.systems.first.port", 11000)
   var lastUsedPortSparkUi = getValueFromConfig(defaultConfig, "appConf.spark.ui.first.port", 16000)
+  var firstPortForSparkExecutor =   getValueFromConfig(defaultConfig, "spark.executor.jmx.first.port", 21000)
 
   val contextMap = new HashMap[String, ActorSelection]() with SynchronizedMap[String, ActorSelection]
   val processMap = new HashMap[String, Process]() with SynchronizedMap[String, Process]
 
   val sparkUIConfigPath: String = "spark.ui.port"
+  val sparkExtraJavaOptsPath = "spark.executor.extraJavaOptions"
 
   override def receive: Receive = {
     case CreateContext(contextName, jars, config) => {
@@ -67,9 +69,15 @@ class ContextManagerActor(defaultConfig: Config) extends Actor with ActorLogging
           mergedConfig = addSparkUiPortToConfig(mergedConfig)
         }
 
+        //If not defined, adding the Executor JMX port
+        val jmxPort = Util.findAvailablePort(firstPortForSparkExecutor)
+        if(!config.hasPath(sparkExtraJavaOptsPath)){
+          mergedConfig = addSparkExecutorJMXPortToConfig(mergedConfig, jmxPort)
+        }
+
         println(s"Received CreateContext message : context=$contextName jars=$jars")
 
-        val processBuilder = createProcessBuilder(contextName, port, jars, mergedConfig)
+        val processBuilder = createProcessBuilder(contextName, port, jars, mergedConfig, jmxPort)
         processMap += contextName -> processBuilder.start()
 
         val actorRef = context.actorSelection(Util.getContextActorAddress(contextName, port))
@@ -160,15 +168,25 @@ class ContextManagerActor(defaultConfig: Config) extends Actor with ActorLogging
     newConf.withFallback(config)
   }
 
-  def createProcessBuilder(contextName: String, port: Int, jars: String, config: Config): ProcessBuilder = {
+  def addSparkExecutorJMXPortToConfig(config: Config, jmxPort: Int): Config = {
+    val map = new util.HashMap[String, String]()
+    println(s"Executor JMX port is set to : $jmxPort")
+    val configValue = "-Dcom.sun.management.jmxremote.port=" + jmxPort + " -Dcom.sun.management.jmxremote.local.only=false -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false"
+    map.put(sparkExtraJavaOptsPath, configValue)
+    val newConf = ConfigFactory.parseMap(map)
+    newConf.withFallback(config)
+  }
+
+  def createProcessBuilder(contextName: String, port: Int, jars: String, config: Config, jmxPort: Int): ProcessBuilder = {
 
     val scriptPath = ContextManagerActor.getClass.getClassLoader.getResource("context_start.sh").getPath
 
     val xmxMemory = getValueFromConfig(config, "driver.xmxMemory", "1g")
 
-    val pb = new ProcessBuilder(scriptPath, jars, contextName, port.toString, xmxMemory)
+    val pb = new ProcessBuilder(scriptPath, jars, contextName, port.toString, xmxMemory, jmxPort.toString)
     pb.redirectErrorStream(true)
     pb.redirectOutput(new File("logs/" + contextName + "-initializer.log"))
+//    pb.redirectOutput()
   }
 
   def scheduleDestroyMessage(process: Process): Unit = {

@@ -8,6 +8,7 @@ classpathParam=$1
 contextName=$2
 port=$3
 xmxMemory=$4
+jmxPort=$5
 
 echo "classpathParam = $classpathParam"
 echo "contextName = $contextName"
@@ -29,8 +30,11 @@ GC_OPTS="-XX:+UseConcMarkSweepGC
 
 JAVA_OPTS="-Xmx$xmxMemory -XX:MaxDirectMemorySize=512M
            -XX:+HeapDumpOnOutOfMemoryError -Djava.net.preferIPv4Stack=true
+           -Dcom.sun.management.jmxremote
+           -Dcom.sun.management.jmxremote.port=$jmxPort
            -Dcom.sun.management.jmxremote.authenticate=false
            -Dcom.sun.management.jmxremote.ssl=false"
+
 
 MAIN="server.MainContext"
 
