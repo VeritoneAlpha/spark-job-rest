@@ -31,7 +31,8 @@ import spray.json.DefaultJsonProtocol._
   var StateKey = "state"
   var ResultKey = "result"
 
-
+  // Get ip from config, "0.0.0.0" as default
+  val webIp = getValueFromConfig(config, "appConf.web.services.ip", "0.0.0.0")
   val webPort = getValueFromConfig(config, "appConf.web.services.port", 8097)
 
   val logger = LoggerFactory.getLogger(getClass)
@@ -39,7 +40,7 @@ import spray.json.DefaultJsonProtocol._
 
 
   val route = jobRoute  ~ contextRoute ~ indexRoute
-  startServer("0.0.0.0", webPort) (route)
+  startServer(webIp, webPort) (route)
 
   def indexRoute: Route = pathPrefix("index"){
     get {
