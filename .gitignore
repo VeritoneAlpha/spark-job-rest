@@ -25,3 +25,4 @@ classpath
 .iml
 .orig
 .java.orig
+dependency-reduced-pom.xml
