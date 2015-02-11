@@ -17,6 +17,8 @@ import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
+import server.domain.actors.JarManagerActor.GetJars
+
 /**
  * Created by raduc on 03/11/14.
  */
@@ -36,7 +38,7 @@ object ContextManagerActor {
 
 }
 
-class ContextManagerActor(defaultConfig: Config) extends Actor with ActorLogging {
+class ContextManagerActor(defaultConfig: Config, jarManagerActor: ActorRef) extends Actor with ActorLogging {
 
   var lastUsedPort = getValueFromConfig(defaultConfig, "appConf.actor.systems.first.port", 11000)
   var lastUsedPortSparkUi = getValueFromConfig(defaultConfig, "appConf.spark.ui.first.port", 16000)
@@ -69,13 +71,22 @@ class ContextManagerActor(defaultConfig: Config) extends Actor with ActorLogging
 
         println(s"Received CreateContext message : context=$contextName jars=$jars")
 
-        val processBuilder = createProcessBuilder(contextName, port, jars, mergedConfig)
-        processMap += contextName -> processBuilder.start()
-
-        val actorRef = context.actorSelection(Util.getContextActorAddress(contextName, port))
-        sendInitMessage(contextName, port, actorRef, sender, mergedConfig)
+        val isJarsFullPath = getValueFromConfig(mergedConfig, "fullPath", true)
+        if (!isJarsFullPath) {
+          val future = jarManagerActor ? GetJars(jars)
+          future.onSuccess {
+            case fullPathJars: String => doCreate(contextName, fullPathJars, mergedConfig, port, sender)
+            case e @ _     => println(s"Get jars full path cause UNKNOW error. Infor is $e")
+          }
+          future.onFailure {
+            case e => {
+              println(s"An error has occured: ${ExceptionUtils.getStackTrace(e)}")
+            }
+          }
+        } else {
+          doCreate(contextName, jars, mergedConfig, port, sender)
+        }
       }
-
     }
       case DeleteContext(contextName) => {
       println(s"Received DeleteContext message : context=$contextName")
@@ -107,6 +118,14 @@ class ContextManagerActor(defaultConfig: Config) extends Actor with ActorLogging
       sender ! contextMap.keys.mkString(",")
     }
 
+  }
+
+  def doCreate(contextName: String, jars: String, mergedConfig: Config, port: Integer, sender: ActorRef) {
+    val processBuilder = createProcessBuilder(contextName, port, jars, mergedConfig)
+    processMap += contextName -> processBuilder.start()
+
+    val actorRef = context.actorSelection(Util.getContextActorAddress(contextName, port))
+    sendInitMessage(contextName, port, actorRef, sender, mergedConfig)
   }
 
   def sendInitMessage(contextName: String, port: Int, actorRef: ActorSelection, sender: ActorRef, config:Config, counter: Int = 1):Unit = {
