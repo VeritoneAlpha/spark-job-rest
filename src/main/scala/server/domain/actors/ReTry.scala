@@ -1,15 +1,14 @@
 package server.domain.actors
 
-import akka.actor._
-import akka.pattern.ask
-
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
+
+import akka.actor._
+import akka.pattern.ask
 
 /*
  See http://www.codetinkerhack.com/2014/01/re-try-pattern-using-akka-actor-ask.html
  */
-
 object ReTry {
   private case class Retry(originalSender: ActorRef, message: Any, times: Int)
 

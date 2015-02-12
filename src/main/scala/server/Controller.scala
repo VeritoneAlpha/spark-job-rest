@@ -1,20 +1,22 @@
 package server
 
+import java.net.URLDecoder
+
 import akka.actor.{ActorSelection, ActorSystem, ActorRef}
 import akka.util.Timeout
 import com.typesafe.config.{Config, ConfigFactory}
 import org.slf4j.LoggerFactory
-import server.domain.actors.{JobActor, ContextManagerActor, ContextActor}
+import server.domain.actors._
 import ContextActor.{FailedInit}
 import ContextManagerActor._
+import JarManagerActor._
 import JobActor._
 import spray.http.{MediaTypes, StatusCodes}
 import spray.routing.{Route, SimpleRoutingApp}
 import akka.pattern.ask
-import server.domain.actors.getValueFromConfig
 
 import scala.concurrent.ExecutionContext
-import scala.util.Success
+import scala.util.{Failure, Success}
 import ExecutionContext.Implicits.global
 import JsonUtils._
 import spray.httpx.SprayJsonSupport.sprayJsonMarshaller
@@ -23,7 +25,7 @@ import spray.json.DefaultJsonProtocol._
 /**
  * Created by raduc on 03/11/14.
  */
-  class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor: ActorRef, originalSystem: ActorSystem) extends SimpleRoutingApp{
+  class Controller(config: Config, jarManagerActor: ActorRef, contextManagerActor: ActorRef, jobManagerActor: ActorRef, originalSystem: ActorSystem) extends SimpleRoutingApp{
 
   implicit val system = originalSystem
   implicit val timeout = Timeout(60000)
@@ -39,7 +41,7 @@ import spray.json.DefaultJsonProtocol._
   logger.info("Starting web service.")
 
 
-  val route = jobRoute  ~ contextRoute ~ indexRoute
+  val route = jarRoute ~ jobRoute  ~ contextRoute ~ indexRoute
   startServer(webIp, webPort) (route)
 
   def indexRoute: Route = pathPrefix("index"){
@@ -50,39 +52,78 @@ import spray.json.DefaultJsonProtocol._
     }
   }
 
-  def jobRoute: Route = pathPrefix("job"){
-    get{
-        parameters('contextName, 'jobId) { (contextName, jobId) =>
-          respondWithMediaType(MediaTypes.`application/json`) { ctx =>
-            val resultFuture = jobManagerActor ? JobStatusEnquiry(contextName, jobId)
-            resultFuture.map{
-              case x:JobRunSuccess => ctx.complete(StatusCodes.OK, resultToTable("Finished", x.result))
-              case x:JobRunError => ctx.complete(StatusCodes.InternalServerError, resultToTable("Error", x.errorMessage))
-              case x:JobStarted => ctx.complete(StatusCodes.OK, resultToTable("Running", ""))
-              case x:JobDoesNotExist => ctx.complete(StatusCodes.BadRequest, "JobId does not exist!")
-              case NoSuchContext => ctx.complete(StatusCodes.BadRequest, "Context does not exist!")
-              case e:Throwable => ctx.complete(StatusCodes.InternalServerError, e)
-              case x:String => ctx.complete(StatusCodes.InternalServerError, x)
+  def jarRoute: Route = pathPrefix("jar") {
+    post {
+      parameters('jarName, 'storePath, 'replace ? false) { (jarName, storePath, replace) =>
+          entity(as[Array[Byte]]) { jarBytes =>
+            respondWithMediaType(MediaTypes.`application/json`) { ctx =>
+              val resultFuture = jarManagerActor ? AddJar(replace, jarName, storePath, jarBytes)
+              resultFuture.map {
+                case Success => ctx.complete(StatusCodes.OK, "Add jar success.")
+                case JarAlreadyExists => ctx.complete(StatusCodes.BadRequest, "Jar already exists.")
+                case InvalidJar => ctx.complete(StatusCodes.BadRequest, "Jar is not of the right format.")
+                case e: Throwable => ctx.complete(StatusCodes.InternalServerError, e)
+              }
             }
           }
-        }
+      }
     } ~
-    post{
-      parameters('runningClass, 'context ) {
-          (runningClass, context) =>
-        entity(as[String]) { configString =>
-          val config = ConfigFactory.parseString(configString)
+      get {
+        respondWithMediaType(MediaTypes.`application/json`) { ctx =>
+          val resultFuture = jarManagerActor ? GetAllJars()
+          resultFuture.map {
+            case s: String => ctx.complete(StatusCodes.OK, s)
+            case e: Any => ctx.complete(StatusCodes.InternalServerError, e.toString)
+          }
+        }
+      } ~
+      delete {
+        path(Segment) { jarName =>
+          val resultFuture = jarManagerActor ? DeleteJar(jarName)
           respondWithMediaType(MediaTypes.`application/json`) { ctx =>
-            val resultFuture = jobManagerActor ? RunJob(runningClass, context, config)
             resultFuture.map {
-              case x: String => ctx.complete(StatusCodes.OK, x)
-              case e: Error => ctx.complete(StatusCodes.InternalServerError, e)
-              case NoSuchContext => ctx.complete(StatusCodes.BadRequest, "No such context.")
+              case Success => ctx.complete(StatusCodes.OK, "Jar deleted.")
+              case Failure => ctx.complete(StatusCodes.InternalServerError, "Delete jar file failed.")
+              case NoSuchJar => ctx.complete(StatusCodes.BadRequest, "No such jar.")
             }
           }
         }
       }
-    }
+  }
+
+  def jobRoute: Route = pathPrefix("job") {
+    get {
+      parameters('contextName, 'jobId) { (contextName, jobId) =>
+        respondWithMediaType(MediaTypes.`application/json`) { ctx =>
+          val resultFuture = jobManagerActor ? JobStatusEnquiry(contextName, jobId)
+          resultFuture.map {
+            case x: JobRunSuccess => ctx.complete(StatusCodes.OK, resultToTable("Finished", x.result))
+            case x: JobRunError => ctx.complete(StatusCodes.InternalServerError, resultToTable("Error", x.errorMessage))
+            case x: JobStarted => ctx.complete(StatusCodes.OK, resultToTable("Running", ""))
+            case x: JobDoesNotExist => ctx.complete(StatusCodes.BadRequest, "JobId does not exist!")
+            case NoSuchContext => ctx.complete(StatusCodes.BadRequest, "Context does not exist!")
+            case e: Throwable => ctx.complete(StatusCodes.InternalServerError, e)
+            case x: String => ctx.complete(StatusCodes.InternalServerError, x)
+          }
+        }
+      }
+    } ~
+      post {
+        parameters('runningClass, 'context) { (runningClass, context) =>
+            entity(as[String]) { configString =>
+              val config = ConfigFactory.parseString(URLDecoder.decode(configString, "UTF-8"))
+              respondWithMediaType(MediaTypes.`application/json`) { ctx =>
+                val resultFuture = jobManagerActor ? RunJob(runningClass, getValueFromConfig(config, "jars", ""), context, config)
+                resultFuture.map {
+                  case x: String => ctx.complete(StatusCodes.OK, x)
+                  case e: Error => ctx.complete(StatusCodes.InternalServerError, e)
+                  case x: JobRunError => ctx.complete(StatusCodes.InternalServerError, resultToTable("Error", x.errorMessage))
+                  case NoSuchContext => ctx.complete(StatusCodes.BadRequest, "No such context.")
+                }
+              }
+            }
+        }
+      }
   }
 
     def contextRoute : Route = pathPrefix("context"){
@@ -91,9 +132,9 @@ import spray.json.DefaultJsonProtocol._
         entity(as[String]) { configString =>
           respondWithMediaType(MediaTypes.`application/json`) { ctx =>
 
-          val config = ConfigFactory.parseString(configString)
+          val config = ConfigFactory.parseString(URLDecoder.decode(configString, "UTF-8"))
 
-          val resultFuture = contextManagerActor ? CreateContext(contextName, getValueFromConfig(config, "jars", ""), config)
+          val resultFuture = contextManagerActor ? CreateContext(contextName, config)
             resultFuture.map {
               case ContextInitialized(sparkUiPort) => ctx.complete(StatusCodes.OK, sparkUiPort)
               case e:FailedInit => ctx.complete(StatusCodes.InternalServerError, "Failed Init: " + e.message)
