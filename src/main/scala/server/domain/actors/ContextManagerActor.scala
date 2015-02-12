@@ -3,30 +3,26 @@ package server.domain.actors
 import java.io.File
 import java.util
 
+import scala.collection.mutable.{HashMap, SynchronizedMap}
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
+import scala.util.{Failure, Success}
+
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSelection}
 import akka.pattern.ask
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.commons.lang.exception.ExceptionUtils
+import org.apache.log4j.Logger
+
 import server.domain.actors.ContextActor.{FailedInit, InitializeContext, Initialized}
 import server.domain.actors.ContextManagerActor._
-import spray.http.StatusCodes
-
-import scala.collection.mutable.{HashMap, SynchronizedMap}
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
-import scala.concurrent.duration._
-import scala.util.{Failure, Success}
-
-import server.domain.actors.JarManagerActor.GetJars
 
 /**
  * Created by raduc on 03/11/14.
  */
-
-
 object ContextManagerActor {
 
-  case class CreateContext(contextName: String, jars: String, config: Config)
+  case class CreateContext(contextName: String, config: Config)
   case class ContextInitialized(port: String)
   case class DeleteContext(contextName: String)
   case class GetContext(contextName: String)
@@ -39,6 +35,7 @@ object ContextManagerActor {
 }
 
 class ContextManagerActor(defaultConfig: Config, jarManagerActor: ActorRef) extends Actor with ActorLogging {
+  private val logger = Logger.getLogger(getClass)
 
   var lastUsedPort = getValueFromConfig(defaultConfig, "appConf.actor.systems.first.port", 11000)
   var lastUsedPortSparkUi = getValueFromConfig(defaultConfig, "appConf.spark.ui.first.port", 16000)
@@ -49,12 +46,10 @@ class ContextManagerActor(defaultConfig: Config, jarManagerActor: ActorRef) exte
   val sparkUIConfigPath: String = "spark.ui.port"
 
   override def receive: Receive = {
-    case CreateContext(contextName, jars, config) => {
+    case CreateContext(contextName, config) => {
 
       if(contextMap contains contextName) {
         sender ! ContextAlreadyExists
-      } else if(jars.isEmpty){
-        sender ! FailedInit("jars property is not defined or is empty.")
       } else {
 
         //adding the default configs
@@ -69,27 +64,17 @@ class ContextManagerActor(defaultConfig: Config, jarManagerActor: ActorRef) exte
           mergedConfig = addSparkUiPortToConfig(mergedConfig)
         }
 
-        println(s"Received CreateContext message : context=$contextName jars=$jars")
+        logger.info(s"Received CreateContext message : context=$contextName")
 
-        val isJarsFullPath = getValueFromConfig(mergedConfig, "fullPath", true)
-        if (!isJarsFullPath) {
-          val future = jarManagerActor ? GetJars(jars)
-          future.onSuccess {
-            case fullPathJars: String => doCreate(contextName, fullPathJars, mergedConfig, port, sender)
-            case e @ _     => println(s"Get jars full path cause UNKNOW error. Infor is $e")
-          }
-          future.onFailure {
-            case e => {
-              println(s"An error has occured: ${ExceptionUtils.getStackTrace(e)}")
-            }
-          }
-        } else {
-          doCreate(contextName, jars, mergedConfig, port, sender)
-        }
+        val processBuilder = createProcessBuilder(contextName, port, mergedConfig)
+        processMap += contextName -> processBuilder.start()
+
+        val actorRef = context.actorSelection(Util.getContextActorAddress(contextName, port))
+        sendInitMessage(contextName, port, actorRef, sender, mergedConfig)
       }
     }
       case DeleteContext(contextName) => {
-      println(s"Received DeleteContext message : context=$contextName")
+        logger.info(s"Received DeleteContext message : context=$contextName")
       if (contextMap contains contextName) {
         val contextRef = contextMap remove contextName get
         val processRef = processMap remove contextName get
@@ -105,7 +90,7 @@ class ContextManagerActor(defaultConfig: Config, jarManagerActor: ActorRef) exte
     }
 
     case GetContext(contextName) => {
-      println(s"Received GetContext message : context=$contextName")
+      logger.info(s"Received GetContext message : context=$contextName")
       if (contextMap contains contextName) {
         sender ! contextMap(contextName)
       } else {
@@ -114,18 +99,10 @@ class ContextManagerActor(defaultConfig: Config, jarManagerActor: ActorRef) exte
     }
 
     case GetAllContexts() => {
-      println(s"Received GetAllContexts message.")
+      logger.info(s"Received GetAllContexts message.")
       sender ! contextMap.keys.mkString(",")
     }
 
-  }
-
-  def doCreate(contextName: String, jars: String, mergedConfig: Config, port: Integer, sender: ActorRef) {
-    val processBuilder = createProcessBuilder(contextName, port, jars, mergedConfig)
-    processMap += contextName -> processBuilder.start()
-
-    val actorRef = context.actorSelection(Util.getContextActorAddress(contextName, port))
-    sendInitMessage(contextName, port, actorRef, sender, mergedConfig)
   }
 
   def sendInitMessage(contextName: String, port: Int, actorRef: ActorSelection, sender: ActorRef, config:Config, counter: Int = 1):Unit = {
@@ -138,34 +115,33 @@ class ContextManagerActor(defaultConfig: Config, jarManagerActor: ActorRef) exte
       val futureResult = context.actorOf(ReTry.props(tries = 20, retryTimeOut = 1000 millis, retryInterval = 1500 millis, actorRef)) ? IsAwake
       futureResult.onComplete{
         case Success(value) => {
-          println(s"Got the callback, meaning = $value")
+          logger.info(s"Got the callback, meaning = $value")
 
           val future = actorRef ? InitializeContext(contextName, config)
           future.onComplete {
             case Success(value) => {
-              println(s"Got the callback, meaning = $value")
+              logger.info(s"Got the callback, meaning = $value")
               value match {
                 case Initialized => {
                   contextMap += contextName -> actorRef
                   sender ! ContextInitialized(sparkUiPort)
                 }
                 case e:FailedInit => {
-                  println(s"Init failed for context $contextName");
+                  logger.info(s"Init failed for context $contextName");
                   sender ! e
                   processMap.remove(contextName).foreach(p => scheduleDestroyMessage(p))
                 }
               }
             }
             case Failure(e) => {
-              println("FAILED to send init message!")
-              e.printStackTrace
-                sender ! FailedInit(ExceptionUtils.getStackTrace(e))
-                processMap.remove(contextName).get.destroy
+              logger.error("FAILED to send init message!", e)
+              sender ! FailedInit(ExceptionUtils.getStackTrace(e))
+              processMap.remove(contextName).get.destroy
             }
           }
         }
         case Failure(e) => {
-          println("FAILED to send IsAwake message, the new Actor didn't initialize!")
+          logger.info("FAILED to send IsAwake message, the new Actor didn't initialize!")
         }
       }
     }
@@ -179,13 +155,13 @@ class ContextManagerActor(defaultConfig: Config, jarManagerActor: ActorRef) exte
     newConf.withFallback(config)
   }
 
-  def createProcessBuilder(contextName: String, port: Int, jars: String, config: Config): ProcessBuilder = {
+  def createProcessBuilder(contextName: String, port: Int, config: Config): ProcessBuilder = {
 
     val scriptPath = ContextManagerActor.getClass.getClassLoader.getResource("context_start.sh").getPath
 
     val xmxMemory = getValueFromConfig(config, "driver.xmxMemory", "1g")
 
-    val pb = new ProcessBuilder(scriptPath, jars, contextName, port.toString, xmxMemory)
+    val pb = new ProcessBuilder(scriptPath, contextName, port.toString, xmxMemory)
     pb.redirectErrorStream(true)
     pb.redirectOutput(new File("logs/" + contextName + "-initializer.log"))
   }

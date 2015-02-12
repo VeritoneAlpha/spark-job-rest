@@ -113,10 +113,11 @@ import spray.json.DefaultJsonProtocol._
             entity(as[String]) { configString =>
               val config = ConfigFactory.parseString(URLDecoder.decode(configString, "UTF-8"))
               respondWithMediaType(MediaTypes.`application/json`) { ctx =>
-                val resultFuture = jobManagerActor ? RunJob(runningClass, context, config)
+                val resultFuture = jobManagerActor ? RunJob(runningClass, getValueFromConfig(config, "jars", ""), context, config)
                 resultFuture.map {
                   case x: String => ctx.complete(StatusCodes.OK, x)
                   case e: Error => ctx.complete(StatusCodes.InternalServerError, e)
+                  case x: JobRunError => ctx.complete(StatusCodes.InternalServerError, resultToTable("Error", x.errorMessage))
                   case NoSuchContext => ctx.complete(StatusCodes.BadRequest, "No such context.")
                 }
               }
@@ -133,7 +134,7 @@ import spray.json.DefaultJsonProtocol._
 
           val config = ConfigFactory.parseString(URLDecoder.decode(configString, "UTF-8"))
 
-          val resultFuture = contextManagerActor ? CreateContext(contextName, getValueFromConfig(config, "jars", ""), config)
+          val resultFuture = contextManagerActor ? CreateContext(contextName, config)
             resultFuture.map {
               case ContextInitialized(sparkUiPort) => ctx.complete(StatusCodes.OK, sparkUiPort)
               case e:FailedInit => ctx.complete(StatusCodes.InternalServerError, "Failed Init: " + e.message)

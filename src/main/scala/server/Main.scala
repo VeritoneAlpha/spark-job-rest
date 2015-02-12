@@ -24,7 +24,7 @@ object Main {
 
     val jarManagerActor = createActor(Props(new JarManagerActor(defaultConfig)), "JarManager", system, supervisor)
     val contextManagerActor = createActor(Props(new ContextManagerActor(defaultConfig, jarManagerActor)), "ContextManager", system, supervisor)
-    val jobManagerActor = createActor(Props(new JobActor(defaultConfig, contextManagerActor)), "JobManager", system, supervisor)
+    val jobManagerActor = createActor(Props(new JobActor(defaultConfig, jarManagerActor, contextManagerActor)), "JobManager", system, supervisor)
     new Controller(defaultConfig, jarManagerActor, contextManagerActor, jobManagerActor, system)
   }
 

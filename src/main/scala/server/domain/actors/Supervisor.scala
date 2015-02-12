@@ -1,10 +1,9 @@
 package server.domain.actors
 
+import scala.concurrent.duration._
+
 import akka.actor.SupervisorStrategy._
 import akka.actor.{Actor, OneForOneStrategy, Props, actorRef2Scala}
-
-import scala.concurrent.duration._
- 
 
 class Supervisor extends Actor {
 

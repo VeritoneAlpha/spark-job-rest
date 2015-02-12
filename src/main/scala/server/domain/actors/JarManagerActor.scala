@@ -2,6 +2,8 @@ package server.domain.actors
 
 import java.io.{ BufferedOutputStream, File, FileOutputStream }
 
+import org.apache.log4j.Logger
+
 import scala.collection.mutable.{ HashMap, SynchronizedMap }
 import scala.util.{ Failure, Success }
 
@@ -21,13 +23,14 @@ object JarManagerActor {
 }
 
 class JarManagerActor(config: Config) extends Actor with ActorLogging {
+  private val logger = Logger.getLogger(getClass)
 
   val jarMap = new HashMap[String, String]() with SynchronizedMap[String, String]
 
   override def receive: Receive = {
 
     case AddJar(replace, jarName, storePath, jarBytes) => {
-      println(s"Received AddJar message : jarName=$jarName storePath=$storePath bytes=" + jarBytes.size)
+      logger.info(s"Received AddJar message : jarName=$jarName storePath=$storePath bytes=${jarBytes.size}")
       if (jarMap.contains(jarName) && !replace) {
         sender ! JarAlreadyExists
       } else if (!validateJarBytes(jarBytes)) {
@@ -47,7 +50,7 @@ class JarManagerActor(config: Config) extends Actor with ActorLogging {
     }
 
     case DeleteJar(jarName) => {
-      println(s"Received DeleteJar message : jarName=$jarName")
+      logger.info(s"Received DeleteJar message : jarName=$jarName")
       if (jarMap.contains(jarName)) {
         val storePath = jarMap.remove(jarName).get
         val jarFile = new File(storePath)
@@ -63,20 +66,20 @@ class JarManagerActor(config: Config) extends Actor with ActorLogging {
 
     case GetJars(jarNames) => {
       import scala.collection.mutable.ArrayBuffer
-      println(s"Received GetJars message : jarNames=$jarNames")
+      logger.info(s"Received GetJars message : jarNames=$jarNames")
       val jarNameArr = jarNames.split(":")
       val arrBuff = new ArrayBuffer[String]
       for (jarName <- jarNameArr) {
         jarMap.get(jarName) match {
           case Some(s) => arrBuff.+=(s)
-          case None    => println(s"$jarName did not add.")
+          case None    => logger.error(s"$jarName did not add.")
         }
       }
       sender ! arrBuff.toArray[String].mkString(":")
     }
 
     case GetAllJars() => {
-      println(s"Received GetAllJars message.")
+      logger.info(s"Received GetAllJars message.")
       sender ! jarMap.values.mkString(",")
     }
   }
