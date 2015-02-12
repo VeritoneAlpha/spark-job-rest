@@ -34,7 +34,7 @@ object ContextManagerActor {
 
 }
 
-class ContextManagerActor(defaultConfig: Config, jarManagerActor: ActorRef) extends Actor with ActorLogging {
+class ContextManagerActor(defaultConfig: Config) extends Actor with ActorLogging {
   private val logger = Logger.getLogger(getClass)
 
   var lastUsedPort = getValueFromConfig(defaultConfig, "appConf.actor.systems.first.port", 11000)
