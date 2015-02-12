@@ -4,10 +4,10 @@ set -e
 
 dir=`dirname $0`
 parentdir="$(dirname "$dir")"
-classpathParam=$1
-contextName=$2
-port=$3
-xmxMemory=$4
+# classpathParam=$1
+contextName=$1
+port=$2
+xmxMemory=$3
 
 echo "classpathParam = $classpathParam"
 echo "contextName = $contextName"
@@ -76,4 +76,5 @@ export SPARK_HOME
 CLASSPATH="$parentdir/resources:$appdir:$parentdir/spark-job-rest.jar:$($SPARK_HOME/bin/compute-classpath.sh):$classpathParam"
 echo $CLASSPATH
 
-exec java -cp $CLASSPATH $GC_OPTS $JAVA_OPTS $LOGGING_OPTS $CONFIG_OVERRIDES $MAIN $conffile $classpathParam $contextName $port >"logs/$2.log" 2>&1
+# exec java -cp $CLASSPATH $GC_OPTS $JAVA_OPTS $LOGGING_OPTS $CONFIG_OVERRIDES $MAIN $conffile $classpathParam $contextName $port >"logs/$2.log" 2>&1
+exec java -cp $CLASSPATH $GC_OPTS $JAVA_OPTS $LOGGING_OPTS $CONFIG_OVERRIDES $MAIN $conffile $contextName $port >"logs/$1.log" 2>&1
