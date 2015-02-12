@@ -82,9 +82,9 @@ import spray.json.DefaultJsonProtocol._
           val resultFuture = jarManagerActor ? DeleteJar(jarName)
           respondWithMediaType(MediaTypes.`application/json`) { ctx =>
             resultFuture.map {
-              case Success => ctx.complete(StatusCodes.OK, "Context deleted.")
+              case Success => ctx.complete(StatusCodes.OK, "Jar deleted.")
               case Failure => ctx.complete(StatusCodes.InternalServerError, "Delete jar file failed.")
-              case NoSuchJar => ctx.complete(StatusCodes.BadRequest, "No such context.")
+              case NoSuchJar => ctx.complete(StatusCodes.BadRequest, "No such jar.")
             }
           }
         }
