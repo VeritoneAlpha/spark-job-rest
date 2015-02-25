@@ -24,7 +24,7 @@ import scala.util.{Failure, Success}
 
 object ContextManagerActor {
 
-  case class CreateContext(contextName: String, jars: String, config: Config)
+  case class CreateContext(contextName: String, user:String, jars: String, config: Config)
   case class ContextInitialized(port: String)
   case class DeleteContext(contextName: String)
   case class GetContext(contextName: String)
@@ -49,7 +49,7 @@ class ContextManagerActor(defaultConfig: Config) extends Actor with ActorLogging
   val sparkExtraJavaOptsPath = "spark.executor.extraJavaOptions"
 
   override def receive: Receive = {
-    case CreateContext(contextName, jars, config) => {
+    case CreateContext(contextName, user, jars, config) => {
 
       if(contextMap contains contextName) {
         sender ! ContextAlreadyExists
@@ -77,7 +77,7 @@ class ContextManagerActor(defaultConfig: Config) extends Actor with ActorLogging
 
         println(s"Received CreateContext message : context=$contextName jars=$jars")
 
-        val processBuilder = createProcessBuilder(contextName, port, jars, mergedConfig, jmxPort)
+        val processBuilder = createProcessBuilder(contextName, port, jars, mergedConfig, jmxPort, user)
         processMap += contextName -> processBuilder.start()
 
         val actorRef = context.actorSelection(Util.getContextActorAddress(contextName, port))
@@ -177,13 +177,13 @@ class ContextManagerActor(defaultConfig: Config) extends Actor with ActorLogging
     newConf.withFallback(config)
   }
 
-  def createProcessBuilder(contextName: String, port: Int, jars: String, config: Config, jmxPort: Int): ProcessBuilder = {
+  def createProcessBuilder(contextName: String, port: Int, jars: String, config: Config, jmxPort: Int, user:String): ProcessBuilder = {
 
     val scriptPath = ContextManagerActor.getClass.getClassLoader.getResource("context_start.sh").getPath
 
     val xmxMemory = getValueFromConfig(config, "driver.xmxMemory", "1g")
 
-    val pb = new ProcessBuilder(scriptPath, jars, contextName, port.toString, xmxMemory, jmxPort.toString)
+    val pb = new ProcessBuilder(scriptPath, jars, contextName, port.toString, xmxMemory, jmxPort.toString, user)
     pb.redirectErrorStream(true)
     pb.redirectOutput(new File("logs/" + contextName + "-initializer.log"))
 //    pb.redirectOutput()

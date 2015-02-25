@@ -87,19 +87,22 @@ import spray.json.DefaultJsonProtocol._
     def contextRoute : Route = pathPrefix("context"){
     post {
       path(Segment) { contextName =>
-        entity(as[String]) { configString =>
-          respondWithMediaType(MediaTypes.`application/json`) { ctx =>
+        parameters('user ? "ubuntu") {
+          (user) =>
+            entity(as[String]) { configString =>
+              respondWithMediaType(MediaTypes.`application/json`) { ctx =>
 
-          val config = ConfigFactory.parseString(configString)
+                val config = ConfigFactory.parseString(configString)
 
-          val resultFuture = contextManagerActor ? CreateContext(contextName, getValueFromConfig(config, "jars", ""), config)
-            resultFuture.map {
-              case ContextInitialized(sparkUiPort) => ctx.complete(StatusCodes.OK, sparkUiPort)
-              case e:FailedInit => ctx.complete(StatusCodes.InternalServerError, "Failed Init: " + e.message)
-              case ContextAlreadyExists => ctx.complete(StatusCodes.BadRequest, "Context already exists.")
-              case e @ _ => println(e)
+                val resultFuture = contextManagerActor ? CreateContext(contextName, user, getValueFromConfig(config, "jars", ""), config)
+                resultFuture.map {
+                  case ContextInitialized(sparkUiPort) => ctx.complete(StatusCodes.OK, sparkUiPort)
+                  case e: FailedInit => ctx.complete(StatusCodes.InternalServerError, "Failed Init: " + e.message)
+                  case ContextAlreadyExists => ctx.complete(StatusCodes.BadRequest, "Context already exists.")
+                  case e@_ => println(e)
+                }
+              }
             }
-          }
         }
       }
     } ~
