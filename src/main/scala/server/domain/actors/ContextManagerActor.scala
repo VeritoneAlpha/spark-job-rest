@@ -40,13 +40,21 @@ class ContextManagerActor(defaultConfig: Config) extends Actor with ActorLogging
 
   var lastUsedPort = getValueFromConfig(defaultConfig, "appConf.actor.systems.first.port", 11000)
   var lastUsedPortSparkUi = getValueFromConfig(defaultConfig, "appConf.spark.ui.first.port", 16000)
-  var firstPortForSparkExecutor =   getValueFromConfig(defaultConfig, "spark.executor.jmx.first.port", 21000)
+  var firstJmxPortForSparkExecutor = getValueFromConfig(defaultConfig, "spark.executor.jmx.first.port", 25000)
+  var firstJmxPortForDriver = getValueFromConfig(defaultConfig, "spark.driver.jmx.first.port", 21000)
+  val jmxExecutorMinusDriver = firstJmxPortForSparkExecutor - firstJmxPortForDriver
+  
 
   val contextMap = new HashMap[String, ActorSelection]() with SynchronizedMap[String, ActorSelection]
   val processMap = new HashMap[String, Process]() with SynchronizedMap[String, Process]
 
   val sparkUIConfigPath: String = "spark.ui.port"
   val sparkExtraJavaOptsPath = "spark.executor.extraJavaOptions"
+
+  val JMX_PORT_MANAGEMENT_PATH: String = "appConf.jmx.port.management"
+
+  val jmxManagementFlag: Boolean = getValueFromConfig(defaultConfig, JMX_PORT_MANAGEMENT_PATH, false)
+  println("JMX management: " + jmxManagementFlag)
 
   override def receive: Receive = {
     case CreateContext(contextName, user, jars, config) => {
@@ -69,15 +77,20 @@ class ContextManagerActor(defaultConfig: Config) extends Actor with ActorLogging
           mergedConfig = addSparkUiPortToConfig(mergedConfig)
         }
 
-        //If not defined, adding the Executor JMX port
-        val jmxPort = Util.findAvailablePort(firstPortForSparkExecutor)
-        if(!config.hasPath(sparkExtraJavaOptsPath)){
+
+
+        //If not already defined and property jmx.port.management is set to true, adding the Executor JMX port
+        var jmxProperty = ""
+        if(!mergedConfig.hasPath(sparkExtraJavaOptsPath) && jmxManagementFlag){
+          val jmxPort = Util.findAvailablePort(firstJmxPortForDriver)
           mergedConfig = addSparkExecutorJMXPortToConfig(mergedConfig, jmxPort)
+          jmxProperty = Util.createJmxConfigValue(jmxPort)
         }
 
         println(s"Received CreateContext message : context=$contextName jars=$jars")
 
-        val processBuilder = createProcessBuilder(contextName, port, jars, mergedConfig, jmxPort, user)
+        val processBuilder = createProcessBuilder(contextName, port, jars, mergedConfig, jmxProperty, user)
+
         processMap += contextName -> processBuilder.start()
 
         val actorRef = context.actorSelection(Util.getContextActorAddress(contextName, port))
@@ -170,20 +183,22 @@ class ContextManagerActor(defaultConfig: Config) extends Actor with ActorLogging
 
   def addSparkExecutorJMXPortToConfig(config: Config, jmxPort: Int): Config = {
     val map = new util.HashMap[String, String]()
-    println(s"Executor JMX port is set to : $jmxPort")
-    val configValue = "-Dcom.sun.management.jmxremote.port=" + jmxPort + " -Dcom.sun.management.jmxremote.local.only=false -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false"
+    println(s"Driver JMX port is set to : $jmxPort")
+    println(s"Executor JMX port is set to : ${jmxPort + jmxExecutorMinusDriver}")
+    val configValue = Util.createJmxConfigValue(jmxPort + jmxExecutorMinusDriver)
     map.put(sparkExtraJavaOptsPath, configValue)
     val newConf = ConfigFactory.parseMap(map)
     newConf.withFallback(config)
   }
 
-  def createProcessBuilder(contextName: String, port: Int, jars: String, config: Config, jmxPort: Int, user:String): ProcessBuilder = {
+  def createProcessBuilder(contextName: String, port: Int, jars: String, config: Config, jmxProperty: String, user:String): ProcessBuilder = {
 
     val scriptPath = ContextManagerActor.getClass.getClassLoader.getResource("context_start.sh").getPath
 
     val xmxMemory = getValueFromConfig(config, "driver.xmxMemory", "1g")
 
-    val pb = new ProcessBuilder(scriptPath, jars, contextName, port.toString, xmxMemory, jmxPort.toString, user)
+    val pb = new ProcessBuilder(scriptPath, jars, contextName, port.toString, xmxMemory, jmxProperty, user)
+
     pb.redirectErrorStream(true)
     pb.redirectOutput(new File("logs/" + contextName + "-initializer.log"))
 //    pb.redirectOutput()

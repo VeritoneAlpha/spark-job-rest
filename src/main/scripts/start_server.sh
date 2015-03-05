@@ -14,7 +14,6 @@ get_abs_script_path() {
 get_abs_script_path
 
 parentdir="$(dirname "$appdir")"
-echo "parentdir = $parentdir"
 
 GC_OPTS="-XX:+UseConcMarkSweepGC
          -verbose:gc -XX:+PrintGCTimeStamps -Xloggc:$appdir/gc.out
@@ -55,7 +54,7 @@ fi
 # job server jar needs to appear first so its deps take higher priority
 # need to explicitly include app dir in classpath so logging configs can be found
 #CLASSPATH="$appdir:$appdir/spark-job-server.jar:$($SPARK_HOME/bin/compute-classpath.sh)"
-CLASSPATH="$parentdir/resources:$appdir:$parentdir/spark-job-rest.jar"
+CLASSPATH="$PRE_CLASSPATH:$parentdir/resources:$appdir:$parentdir/repo/*:$parentdir/spark-job-rest.jar"
 echo "CLASSPATH = $CLASSPATH"
 
 rm -rf logs

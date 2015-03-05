@@ -8,12 +8,13 @@ classpathParam=$1
 contextName=$2
 port=$3
 xmxMemory=$4
-jmxPort=$5
+jmxProperty=$5
 userExec=$6
 
 echo "classpathParam = $classpathParam"
 echo "contextName = $contextName"
 echo "port = $port"
+echo "jmxProperty = $jmxProperty"
 
 get_abs_script_path() {
   pushd . >/dev/null
@@ -31,10 +32,7 @@ GC_OPTS="-XX:+UseConcMarkSweepGC
 
 JAVA_OPTS="-Xmx$xmxMemory -XX:MaxDirectMemorySize=512M
            -XX:+HeapDumpOnOutOfMemoryError -Djava.net.preferIPv4Stack=true
-           -Dcom.sun.management.jmxremote
-           -Dcom.sun.management.jmxremote.port=$jmxPort
-           -Dcom.sun.management.jmxremote.authenticate=false
-           -Dcom.sun.management.jmxremote.ssl=false"
+           $jmxProperty"
 
 
 MAIN="server.MainContext"
@@ -64,7 +62,7 @@ fi
 # job server jar needs to appear first so its deps take higher priority
 # need to explicitly include app dir in classpath so logging configs can be found
 #CLASSPATH="$appdir:$appdir/spark-job-server.jar:$($SPARK_HOME/bin/compute-classpath.sh)"
-CLASSPATH="$parentdir/resources:$appdir:$parentdir/spark-job-rest.jar:$classpathParam"
+CLASSPATH="$PRE_CLASSPATH:$parentdir/resources:$appdir:$parentdir/repo/*:$parentdir/spark-job-rest.jar:$classpathParam"
 echo $CLASSPATH
 
 

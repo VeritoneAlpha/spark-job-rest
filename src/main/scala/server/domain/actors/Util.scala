@@ -1,7 +1,7 @@
 package server.domain.actors
 
 import java.io.IOException
-import java.net.ServerSocket
+import java.net.{Socket, DatagramSocket, ServerSocket}
 
 import com.typesafe.config.{Config, ConfigFactory}
 
@@ -9,6 +9,10 @@ import com.typesafe.config.{Config, ConfigFactory}
  * Created by raduc on 11/11/14.
  */
 object Util {
+  def createJmxConfigValue(jmxPort: Int): String = {
+    "-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=" + jmxPort + " -Dcom.sun.management.jmxremote.local.only=false -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false"
+  }
+
 
   val PREFIX_CONTEXT_ACTOR = "A-"
   val PREFIX_CONTEXT_SYSTEM = "S-"
@@ -22,16 +26,34 @@ object Util {
   }
 
   def findAvailablePort(lastUsedPort: Int): Integer = {
-    val notFound = true;
+    var ss:ServerSocket = null
+    var ds:DatagramSocket = null
+
+    val notFound = true
     var port = lastUsedPort + 1
     while (notFound) {
       try {
-        new ServerSocket(port).close()
+        ss = new ServerSocket(port)
+        ss.setReuseAddress(true)
+        ds = new DatagramSocket(port)
+        ds.setReuseAddress(true)
         return port
       }
       catch {
         case e: IOException => {
           port += 1
+        }
+      } finally {
+        if (ds != null) {
+          ds.close()
+        }
+
+        if (ss != null) {
+          try {
+            ss.close()
+          } catch {
+            case e: IOException => println("Exception when closing port.")
+          }
         }
       }
     }
