@@ -1,7 +1,7 @@
 package server
 
 import akka.event.Logging
-import server.domain.actors.{Supervisor, JobActor, ContextManagerActor}
+import server.domain.actors._
 
 import scala.concurrent.Await
 import akka.actor.ActorRef
@@ -9,7 +9,6 @@ import akka.pattern.ask
 
 import akka.actor.{Props, ActorSystem}
 import com.typesafe.config.ConfigFactory
-import server.domain.actors.timeout
 
 /**
  * Created by raduc on 29/10/14.
@@ -25,7 +24,8 @@ object Main {
 
     val contextManagerActor = createActor(Props(new ContextManagerActor(defaultConfig)), "ContextManager", system, supervisor)
     val jobManagerActor = createActor(Props(new JobActor(defaultConfig, contextManagerActor)), "JobManager", system, supervisor)
-    val controller = new Controller(defaultConfig, contextManagerActor, jobManagerActor, system)
+    val jarActor = createActor(Props(new JarActor()), "JarActor", system, supervisor)
+    val controller = new Controller(defaultConfig, contextManagerActor, jobManagerActor, jarActor, system)
 
   }
 

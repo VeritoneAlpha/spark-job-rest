@@ -4,11 +4,12 @@ import akka.actor.{ActorSelection, ActorSystem, ActorRef}
 import akka.util.Timeout
 import com.typesafe.config.{Config, ConfigFactory}
 import org.slf4j.LoggerFactory
+import server.domain.actors.JarActor._
 import server.domain.actors.{JobActor, ContextManagerActor, ContextActor}
 import ContextActor.{FailedInit}
 import ContextManagerActor._
 import JobActor._
-import spray.http.{MediaTypes, StatusCodes}
+import spray.http.{MultipartFormData, MediaTypes, StatusCodes}
 import spray.routing.{Route, SimpleRoutingApp}
 import akka.pattern.ask
 import server.domain.actors.getValueFromConfig
@@ -23,7 +24,7 @@ import spray.json.DefaultJsonProtocol._
 /**
  * Created by raduc on 03/11/14.
  */
-  class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor: ActorRef, originalSystem: ActorSystem) extends SimpleRoutingApp{
+  class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor: ActorRef, jarActor: ActorRef, originalSystem: ActorSystem) extends SimpleRoutingApp{
 
   implicit val system = originalSystem
   implicit val timeout = Timeout(60000)
@@ -136,6 +137,43 @@ import spray.json.DefaultJsonProtocol._
       }
     }
 
+  }
+
+  def jarRoute : Route = pathPrefix("jar"){
+    post {
+      path(Segment) { jarName =>
+        entity(as[Array[Byte]]) { jarBytes =>
+          val resultFuture = jarActor ? AddJar(jarName, jarBytes)
+          respondWithMediaType(MediaTypes.`application/json`) { ctx =>
+            resultFuture.map {
+              case BadJar => ctx.complete(StatusCodes.BadRequest, "The jar is not valid.")
+              case Success => ctx.complete(StatusCodes.OK, "Context added.")
+            }
+          }
+        }
+      }
+    } ~
+    delete {
+      path(Segment) { jarName =>
+        val resultFuture = jarActor ? DeleteJar(jarName)
+        respondWithMediaType(MediaTypes.`application/json`) { ctx =>
+          resultFuture.map {
+            case NoSuchJar => ctx.complete(StatusCodes.BadRequest, "No such jar.")
+            case Success => ctx.complete(StatusCodes.OK, "Context deleted.")
+          }
+        }
+      }
+    } ~
+    get {
+      respondWithMediaType(MediaTypes.`application/json`) { ctx =>
+        val future = jarActor ? GetAllJars
+        future.map{
+          case list:List[String] => {
+            ctx.complete(StatusCodes.BadRequest, list)
+          }
+        }
+      }
+    }
   }
 
   def resultToTable(state: String, result: Any): Map[String, Any] = {
