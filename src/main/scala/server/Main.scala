@@ -1,6 +1,5 @@
 package server
 
-import akka.event.Logging
 import server.domain.actors._
 
 import scala.concurrent.Await
@@ -24,7 +23,7 @@ object Main {
 
     val contextManagerActor = createActor(Props(new ContextManagerActor(defaultConfig)), "ContextManager", system, supervisor)
     val jobManagerActor = createActor(Props(new JobActor(defaultConfig, contextManagerActor)), "JobManager", system, supervisor)
-    val jarActor = createActor(Props(new JarActor()), "JarActor", system, supervisor)
+    val jarActor = createActor(Props(new JarActor(defaultConfig)), "JarActor", system, supervisor)
     val controller = new Controller(defaultConfig, contextManagerActor, jobManagerActor, jarActor, system)
 
   }
