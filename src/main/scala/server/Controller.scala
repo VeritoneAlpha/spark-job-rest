@@ -15,7 +15,7 @@ import akka.pattern.ask
 import server.domain.actors.getValueFromConfig
 
 import scala.concurrent.ExecutionContext
-import scala.util.Success
+import scala.util.{Failure, Success}
 import ExecutionContext.Implicits.global
 import JsonUtils._
 import spray.httpx.SprayJsonSupport.sprayJsonMarshaller
@@ -40,7 +40,7 @@ import spray.json.DefaultJsonProtocol._
   logger.info("Starting web service.")
 
 
-  val route = jobRoute  ~ contextRoute ~ indexRoute
+  val route = jobRoute  ~ contextRoute ~ indexRoute ~ jarRoute
   startServer(webIp, webPort) (route)
 
   def indexRoute: Route = pathPrefix("index"){
@@ -146,8 +146,8 @@ import spray.json.DefaultJsonProtocol._
           val resultFuture = jarActor ? AddJar(jarName, jarBytes)
           respondWithMediaType(MediaTypes.`application/json`) { ctx =>
             resultFuture.map {
-              case BadJar => ctx.complete(StatusCodes.BadRequest, "The jar is not valid.")
-              case Success => ctx.complete(StatusCodes.OK, "Context added.")
+              case Failure(e) => ctx.complete(StatusCodes.BadRequest, e)
+              case Success(message) => ctx.complete(StatusCodes.OK, message)
             }
           }
         }
@@ -160,13 +160,14 @@ import spray.json.DefaultJsonProtocol._
           resultFuture.map {
             case NoSuchJar => ctx.complete(StatusCodes.BadRequest, "No such jar.")
             case Success => ctx.complete(StatusCodes.OK, "Context deleted.")
+            case x:Exception => ctx.complete(StatusCodes.InternalServerError, x.getMessage)
           }
         }
       }
     } ~
     get {
       respondWithMediaType(MediaTypes.`application/json`) { ctx =>
-        val future = jarActor ? GetAllJars
+        val future = jarActor ? GetAllJars()
         future.map{
           case list:List[String] => {
             ctx.complete(StatusCodes.BadRequest, list)
