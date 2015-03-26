@@ -1,4 +1,4 @@
-package server.domain.actors
+package utils
 
 import java.io.IOException
 import java.net.ServerSocket
@@ -8,7 +8,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 /**
  * Created by raduc on 11/11/14.
  */
-object Util {
+object ActorUtils {
 
   val PREFIX_CONTEXT_ACTOR = "A-"
   val PREFIX_CONTEXT_SYSTEM = "S-"

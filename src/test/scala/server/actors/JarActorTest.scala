@@ -28,6 +28,7 @@ class JarActorTest extends FunSuite with BeforeAndAfter with ScalaFutures with M
   implicit val system = ActorSystem("localSystem")
 
   val jarActor = TestActorRef(new JarActor(config))
+  val contextName = "demoContext"
 
   before {
     jarActor ! CreateJarFolder
@@ -94,7 +95,7 @@ class JarActorTest extends FunSuite with BeforeAndAfter with ScalaFutures with M
     val jarName = Random.nextString(5) + ".jar"
     var future = jarActor ? AddJar(jarName, getTestJarBytes())
 
-    future = jarActor ? GetJarsPathForClasspath(jarName)
+    future = jarActor ? GetJarsPathForClasspath(jarName, contextName)
     val Success(result: String) = future.value.get
     result should be( config.getString(JarActor.JAR_FOLDER_PROPERTY_PATH) + jarName)
   }
@@ -103,7 +104,7 @@ class JarActorTest extends FunSuite with BeforeAndAfter with ScalaFutures with M
 
     val jarPath = "/home/ubuntu/test.jar"
 
-    val future = jarActor ? GetJarsPathForClasspath(jarPath)
+    val future = jarActor ? GetJarsPathForClasspath(jarPath, contextName)
     val Success(result: String) = future.value.get
     result should be( jarPath )
   }
@@ -125,7 +126,7 @@ class JarActorTest extends FunSuite with BeforeAndAfter with ScalaFutures with M
     val jarName = Random.nextString(5) + ".jar"
     var future = jarActor ? AddJar(jarName, getTestJarBytes())
 
-    future = jarActor ? GetJarsPathForClasspath(jarPath + "," + jarName)
+    future = jarActor ? GetJarsPathForClasspath(jarPath + "," + jarName, contextName)
     val Success(result: String) = future.value.get
     result should be( jarPath + JarActor.CLASSPATH_JAR_SEPARATOR + config.getString(JarActor.JAR_FOLDER_PROPERTY_PATH) + jarName)
   }

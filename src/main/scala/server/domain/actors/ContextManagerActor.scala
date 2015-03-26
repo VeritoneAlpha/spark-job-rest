@@ -9,13 +9,15 @@ import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.commons.lang.exception.ExceptionUtils
 import server.domain.actors.ContextActor.{FailedInit, InitializeContext, Initialized}
 import server.domain.actors.ContextManagerActor._
+import server.domain.actors.JarActor.GetJarsPathForClasspath
 import spray.http.StatusCodes
+import utils.ActorUtils
 
 import scala.collection.mutable.{HashMap, SynchronizedMap}
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
-import scala.util.{Failure, Success}
+import scala.util.{Success, Failure}
 
 /**
  * Created by raduc on 03/11/14.
@@ -36,7 +38,7 @@ object ContextManagerActor {
 
 }
 
-class ContextManagerActor(defaultConfig: Config) extends Actor with ActorLogging {
+class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef) extends Actor with ActorLogging {
 
   var lastUsedPort = getValueFromConfig(defaultConfig, "appConf.actor.systems.first.port", 11000)
   var lastUsedPortSparkUi = getValueFromConfig(defaultConfig, "appConf.spark.ui.first.port", 16000)
@@ -59,7 +61,7 @@ class ContextManagerActor(defaultConfig: Config) extends Actor with ActorLogging
         var mergedConfig = config.withFallback(defaultConfig)
 
         //The port for the actor system
-        val port = Util.findAvailablePort(lastUsedPort)
+        val port = ActorUtils.findAvailablePort(lastUsedPort)
         lastUsedPort = port
 
         //If not defined, setting the spark.ui port
@@ -67,12 +69,32 @@ class ContextManagerActor(defaultConfig: Config) extends Actor with ActorLogging
           mergedConfig = addSparkUiPortToConfig(mergedConfig)
         }
 
+//        val jarsFuture = jarActor ? GetJarsPathForClasspath(jars)
+//        jarsFuture.onComplete{
+//          case Success(value) => {
+//            println(s"Got the callback, meaning = $value")
+//            value match {
+//              case Initialized => {
+//              }
+//              case e:FailedInit => {
+//                println(s"Init failed for context $contextName");
+//              }
+//            }
+//          }
+//          case Failure(e) => {
+//            println("FAILED to send init message!")
+//            e.printStackTrace
+//            sender ! FailedInit(ExceptionUtils.getStackTrace(e))
+//          }
+//        }
+//        }
+
         println(s"Received CreateContext message : context=$contextName jars=$jars")
 
         val processBuilder = createProcessBuilder(contextName, port, jars, mergedConfig)
         processMap += contextName -> processBuilder.start()
 
-        val actorRef = context.actorSelection(Util.getContextActorAddress(contextName, port))
+        val actorRef = context.actorSelection(ActorUtils.getContextActorAddress(contextName, port))
         sendInitMessage(contextName, port, actorRef, sender, mergedConfig)
       }
 
@@ -153,7 +175,7 @@ class ContextManagerActor(defaultConfig: Config) extends Actor with ActorLogging
   }
 
   def addSparkUiPortToConfig(config: Config): Config = {
-    lastUsedPortSparkUi = Util.findAvailablePort(lastUsedPortSparkUi)
+    lastUsedPortSparkUi = ActorUtils.findAvailablePort(lastUsedPortSparkUi)
     val map = new util.HashMap[String, String]()
     map.put(sparkUIConfigPath, lastUsedPortSparkUi.toString)
     val newConf = ConfigFactory.parseMap(map)

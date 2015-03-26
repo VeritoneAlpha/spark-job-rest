@@ -8,6 +8,7 @@ import org.apache.spark.SparkContext
 import ContextManagerActor.{DeleteContext, IsAwake}
 import server.domain.actors.JobActor._
 import server.domain.actors.ContextActor._
+import utils.ActorUtils
 
 import scala.collection.mutable.{SynchronizedMap, HashMap}
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -121,7 +122,7 @@ class ContextActor(jarsPath: Array[String], localConfig: Config) extends Actor w
   }
 
   def startWatchingManagerActor() = {
-    val managerActor = context.actorSelection(Util.getActorAddress("ManagerSystem", getValueFromConfig(localConfig,"manager.akka.remote.netty.tcp.port", 4042), "Supervisor/ContextManager"))
+    val managerActor = context.actorSelection(ActorUtils.getActorAddress("ManagerSystem", getValueFromConfig(localConfig,"manager.akka.remote.netty.tcp.port", 4042), "Supervisor/ContextManager"))
     managerActor.resolveOne().onComplete {
       case Success(actorRef) => {
         println(s"Now watching the ContextManager from this actor.")

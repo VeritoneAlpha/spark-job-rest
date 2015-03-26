@@ -147,7 +147,7 @@ import spray.json.DefaultJsonProtocol._
           respondWithMediaType(MediaTypes.`application/json`) { ctx =>
             resultFuture.map {
               case Failure(e) => ctx.complete(StatusCodes.BadRequest, e)
-              case Success(message) => ctx.complete(StatusCodes.OK, message)
+              case Success(message: String) => ctx.complete(StatusCodes.OK, message)
             }
           }
         }

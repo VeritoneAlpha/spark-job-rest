@@ -3,7 +3,8 @@ package server
 import akka.actor.{Props, ActorSystem}
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
-import server.domain.actors.{Util, ContextActor}
+import server.domain.actors.ContextActor
+import utils.ActorUtils
 
 /**
 * Created by raduc on 30/10/14.
@@ -20,12 +21,12 @@ object MainContext {
     println(s"Started new process for contextName = $contextName with port = $port")
 
     val defaultConfig = ConfigFactory.load()
-    val config = Util.remoteConfig("localhost", port, defaultConfig)
-    val system = ActorSystem(Util.PREFIX_CONTEXT_SYSTEM + contextName, config)
+    val config = ActorUtils.remoteConfig("localhost", port, defaultConfig)
+    val system = ActorSystem(ActorUtils.PREFIX_CONTEXT_SYSTEM + contextName, config)
 
-    system.actorOf(Props(new ContextActor(jarsPath, defaultConfig)), Util.PREFIX_CONTEXT_ACTOR + contextName)
+    system.actorOf(Props(new ContextActor(jarsPath, defaultConfig)), ActorUtils.PREFIX_CONTEXT_ACTOR + contextName)
 
-    println(s"Initialized system $Util.PREFIX_CONTEXT_SYSTEM$contextName and actor $Util.PREFIX_CONTEXT_SYSTEM$contextName")
+    println(s"Initialized system $ActorUtils.PREFIX_CONTEXT_SYSTEM$contextName and actor $ActorUtils.PREFIX_CONTEXT_SYSTEM$contextName")
 
   }
 
