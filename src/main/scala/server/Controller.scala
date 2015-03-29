@@ -146,7 +146,7 @@ import spray.json.DefaultJsonProtocol._
           val resultFuture = jarActor ? AddJar(jarName, jarBytes)
           respondWithMediaType(MediaTypes.`application/json`) { ctx =>
             resultFuture.map {
-              case Failure(e) => ctx.complete(StatusCodes.BadRequest, e)
+              case Failure(e) => ctx.complete(StatusCodes.InternalServerError, e.getMessage)
               case Success(message: String) => ctx.complete(StatusCodes.OK, message)
             }
           }
@@ -158,8 +158,8 @@ import spray.json.DefaultJsonProtocol._
         val resultFuture = jarActor ? DeleteJar(jarName)
         respondWithMediaType(MediaTypes.`application/json`) { ctx =>
           resultFuture.map {
-            case NoSuchJar => ctx.complete(StatusCodes.BadRequest, "No such jar.")
-            case Success => ctx.complete(StatusCodes.OK, "Context deleted.")
+            case NoSuchJar() => ctx.complete(StatusCodes.BadRequest, "No such jar.")
+            case Success(message: String) => ctx.complete(StatusCodes.OK, message)
             case x:Exception => ctx.complete(StatusCodes.InternalServerError, x.getMessage)
           }
         }
@@ -170,7 +170,7 @@ import spray.json.DefaultJsonProtocol._
         val future = jarActor ? GetAllJars()
         future.map{
           case list:List[String] => {
-            ctx.complete(StatusCodes.BadRequest, list)
+            ctx.complete(StatusCodes.OK, list)
           }
         }
       }

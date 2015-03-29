@@ -9,7 +9,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.commons.lang.exception.ExceptionUtils
 import server.domain.actors.ContextActor.{FailedInit, InitializeContext, Initialized}
 import server.domain.actors.ContextManagerActor._
-import server.domain.actors.JarActor.GetJarsPathForClasspath
+import server.domain.actors.JarActor.{ResultJarsPathForAll, GetJarsPathForAll, GetJarsPathForClasspath}
 import spray.http.StatusCodes
 import utils.ActorUtils
 
@@ -69,33 +69,35 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef) extends Act
           mergedConfig = addSparkUiPortToConfig(mergedConfig)
         }
 
-//        val jarsFuture = jarActor ? GetJarsPathForClasspath(jars)
-//        jarsFuture.onComplete{
-//          case Success(value) => {
-//            println(s"Got the callback, meaning = $value")
-//            value match {
-//              case Initialized => {
-//              }
-//              case e:FailedInit => {
-//                println(s"Init failed for context $contextName");
-//              }
-//            }
-//          }
-//          case Failure(e) => {
-//            println("FAILED to send init message!")
-//            e.printStackTrace
-//            sender ! FailedInit(ExceptionUtils.getStackTrace(e))
-//          }
-//        }
-//        }
-
         println(s"Received CreateContext message : context=$contextName jars=$jars")
+        val webSender = sender
 
-        val processBuilder = createProcessBuilder(contextName, port, jars, mergedConfig)
-        processMap += contextName -> processBuilder.start()
+        val jarsFuture = jarActor ? GetJarsPathForAll(jars, contextName)
+        jarsFuture.onComplete{
+          case Success(value) => {
+            println(s"Received jars path: $value")
+            value match {
+              case result:ResultJarsPathForAll => {
 
-        val actorRef = context.actorSelection(ActorUtils.getContextActorAddress(contextName, port))
-        sendInitMessage(contextName, port, actorRef, sender, mergedConfig)
+                val processBuilder = createProcessBuilder(contextName, port, result.pathForClasspath, mergedConfig)
+                processMap += contextName -> processBuilder.start()
+
+                val actorRef = context.actorSelection(ActorUtils.getContextActorAddress(contextName, port))
+                sendInitMessage(contextName, port, actorRef, webSender, mergedConfig, result.pathForSpark)
+
+              }
+              case e:Exception => {
+                println(s"Received exception on success!!! ${ExceptionUtils.getStackTrace(e)}");
+              }
+            }
+          }
+          case Failure(e) => {
+            println("FAILED to get the jars path!")
+            e.printStackTrace
+            sender ! Failure(e)
+          }
+        }
+
       }
 
     }
@@ -131,7 +133,7 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef) extends Act
 
   }
 
-  def sendInitMessage(contextName: String, port: Int, actorRef: ActorSelection, sender: ActorRef, config:Config, counter: Int = 1):Unit = {
+  def sendInitMessage(contextName: String, port: Int, actorRef: ActorSelection, sender: ActorRef, config:Config, jarsForSpark: List[String]):Unit = {
 
     val sleepTime = getValueFromConfig(config, "appConf.init.sleep", 3000)
     val sparkUiPort = config.getString(sparkUIConfigPath)
@@ -143,7 +145,7 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef) extends Act
         case Success(value) => {
           println(s"Got the callback, meaning = $value")
 
-          val future = actorRef ? InitializeContext(contextName, config)
+          val future = actorRef ? InitializeContext(contextName, config, jarsForSpark)
           future.onComplete {
             case Success(value) => {
               println(s"Got the callback, meaning = $value")
@@ -182,13 +184,13 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef) extends Act
     newConf.withFallback(config)
   }
 
-  def createProcessBuilder(contextName: String, port: Int, jars: String, config: Config): ProcessBuilder = {
+  def createProcessBuilder(contextName: String, port: Int, jarsForClasspath: String, config: Config): ProcessBuilder = {
 
     val scriptPath = ContextManagerActor.getClass.getClassLoader.getResource("context_start.sh").getPath
 
     val xmxMemory = getValueFromConfig(config, "driver.xmxMemory", "1g")
 
-    val pb = new ProcessBuilder(scriptPath, jars, contextName, port.toString, xmxMemory)
+    val pb = new ProcessBuilder(scriptPath, jarsForClasspath, contextName, port.toString, xmxMemory)
     pb.redirectErrorStream(true)
     pb.redirectOutput(new File("logs/" + contextName + "-initializer.log"))
   }

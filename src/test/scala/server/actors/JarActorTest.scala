@@ -12,6 +12,7 @@ import server.domain.actors.JarActor._
 import server.domain.actors.{JarActor}
 import akka.pattern.ask
 import org.scalatest.Matchers
+import utils.FileUtils
 import scala.util.{Random, Success}
 
 
@@ -29,6 +30,8 @@ class JarActorTest extends FunSuite with BeforeAndAfter with ScalaFutures with M
 
   val jarActor = TestActorRef(new JarActor(config))
   val contextName = "demoContext"
+
+  val jarFolder = config.getString(JarActor.JAR_FOLDER_PROPERTY_PATH)
 
   before {
     jarActor ! CreateJarFolder
@@ -63,16 +66,16 @@ class JarActorTest extends FunSuite with BeforeAndAfter with ScalaFutures with M
     val jarName = Random.nextString(5) + ".jar"
 
     var future = jarActor ? AddJar(jarName, getTestJarBytes())
-    val Success(result: String) = future.value.get
-    result should be ("Jar successfully saved.")
+    val Success(result: Success[String]) = future.value.get
+    result should be (Success("Jar successfully saved."))
 
     future = jarActor ? GetAllJars()
     val Success(resultJars: List[String]) = future.value.get
     resultJars should be( List(jarName) )
 
     future = jarActor ? DeleteJar(jarName)
-    val Success(deleteResult: String) = future.value.get
-    deleteResult should be( "Jar successfully deleted." )
+    val Success(deleteResult: Success[String]) = future.value.get
+    deleteResult should be( Success("Jar deleted.") )
 
     future = jarActor ? GetAllJars()
     val Success(emptyJarList: List[String]) = future.value.get
@@ -100,9 +103,16 @@ class JarActorTest extends FunSuite with BeforeAndAfter with ScalaFutures with M
     result should be( config.getString(JarActor.JAR_FOLDER_PROPERTY_PATH) + jarName)
   }
 
+  def createLocalJar(jarName: String) = {
+    val jarPath = jarFolder + jarName
+    FileUtils.writeToFile(jarName, jarFolder, getTestJarBytes())
+  }
+
   test("Get Classpath For Local Jar"){
 
-    val jarPath = "/home/ubuntu/test.jar"
+    val jarName = "test.jar"
+    val jarPath = jarFolder + jarName
+    createLocalJar(jarName)
 
     val future = jarActor ? GetJarsPathForClasspath(jarPath, contextName)
     val Success(result: String) = future.value.get
@@ -121,7 +131,9 @@ class JarActorTest extends FunSuite with BeforeAndAfter with ScalaFutures with M
   test("Get Classpath For Multiple Jars"){
 
     //    TODO: Add hdfs jar to this test
-    val jarPath = "/home/ubuntu/test.jar"
+    val localJarName = "test.jar"
+    val jarPath = jarFolder + localJarName
+    createLocalJar(localJarName)
 
     val jarName = Random.nextString(5) + ".jar"
     var future = jarActor ? AddJar(jarName, getTestJarBytes())
@@ -142,7 +154,9 @@ class JarActorTest extends FunSuite with BeforeAndAfter with ScalaFutures with M
 
   test("Get Spark Jars For Local Jar"){
 
-    val jarPath = "/home/ubuntu/test.jar"
+    val localJarName = "test.jar"
+    val jarPath = jarFolder + localJarName
+    createLocalJar(localJarName)
 
     val future = jarActor ? GetJarsPathForSpark(jarPath)
     val Success(result: List[String]) = future.value.get
@@ -159,7 +173,10 @@ class JarActorTest extends FunSuite with BeforeAndAfter with ScalaFutures with M
 
   test("Get Spark Jars For Multiple Jars"){
 
-    val jarPath = "/home/ubuntu/test.jar"
+    val localJarName = "test.jar"
+    val jarPath = jarFolder + localJarName
+    createLocalJar(localJarName)
+
     val hdfsJarPath = "hdfs://devbox.local:8020/home/ubuntu/test.jar"
 
     val jarName = Random.nextString(5) + ".jar"
@@ -168,6 +185,23 @@ class JarActorTest extends FunSuite with BeforeAndAfter with ScalaFutures with M
     future = jarActor ? GetJarsPathForSpark(jarPath + "," + jarName  + "," + hdfsJarPath)
     val Success(result: List[String]) = future.value.get
     result should be( List(jarPath, config.getString(JarActor.JAR_FOLDER_PROPERTY_PATH) + jarName, hdfsJarPath))
+  }
+
+  test("Get All Jars Paths For Multiple Jars"){
+
+    val localJarName = "test.jar"
+    val jarPath = jarFolder + localJarName
+    createLocalJar(localJarName)
+
+//    val hdfsJarPath = "hdfs://devbox.local:8020/home/ubuntu/test.jar"
+
+    val jarName = Random.nextString(5) + ".jar"
+    var future = jarActor ? AddJar(jarName, getTestJarBytes())
+
+    future = jarActor ? GetJarsPathForAll(jarPath + "," + jarName, contextName)
+    val Success(result: ResultJarsPathForAll) = future.value.get
+    result.pathForSpark should be( List(jarPath, config.getString(JarActor.JAR_FOLDER_PROPERTY_PATH) + jarName))
+    result.pathForClasspath should be ( jarPath + JarActor.CLASSPATH_JAR_SEPARATOR + jarFolder + jarName)
   }
 
 

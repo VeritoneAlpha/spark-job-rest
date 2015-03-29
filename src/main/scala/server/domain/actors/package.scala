@@ -16,7 +16,7 @@ package object actors {
     return if (config.hasPath(configPath)) config.getAnyRef(configPath).asInstanceOf[T] else defaultValue
   }
 
-  def configToSparkConf(config:Config, contextName:String, jars: Array[String]): SparkConf ={
+  def configToSparkConf(config:Config, contextName:String, jars: List[String]): SparkConf ={
     val sparkConf = new SparkConf().setAppName(contextName).setJars(jars)
     for(x <- config.entrySet().asScala
       if(x.getKey.startsWith("spark."))){

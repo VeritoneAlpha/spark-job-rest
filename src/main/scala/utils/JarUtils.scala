@@ -17,36 +17,49 @@ object JarUtils {
   }
 
   def getPathForClasspath(path: String, jarFolder: String, contextName: String): String = {
-    if(path.startsWith("/")){
-      return path
-    } else {
-      var jarName = path
-      if (path.startsWith("hdfs")) {
-        FileUtils.createFolder(jarFolder + "tmp" + File.pathSeparator + contextName, true)
-        HdfsUtils.copyJarFromHdfs(path, jarFolder)
-        jarName = path.substring(path.lastIndexOf('\\'))
+    val diskPath =
+      if(path.startsWith("/")){
+        path
+      } else if (path.startsWith("hdfs")){
+        val tempFolder = jarFolder + "tmp" + File.pathSeparator + contextName
+        FileUtils.createFolder(tempFolder, true)
+        HdfsUtils.copyJarFromHdfs(path, tempFolder)
+        tempFolder + File.pathSeparator + getJarName(path)
+      } else {
+        jarFolder + getJarName(path)
       }
 
-      val file = new File(jarFolder + jarName)
-      if (file.exists()) {
-        return jarFolder + path
-      }
+    val diskFile = new File(diskPath)
+    if (diskFile.exists()) {
+      return diskPath
     }
 
     throw new Exception(s"Jar $path  could not be resolved.")
   }
 
 
+  def getJarName(path: String): String = {
+    if(path.contains('\\')) {
+      path.substring(path.lastIndexOf('\\'))
+    } else {
+      path
+    }
+  }
+
   def getJarPathForSpark(path: String, jarFolder: String): String = {
-    if(path.startsWith("/")){
-      return path
-    } else if (path.startsWith("hdfs")) {
+    if(path.startsWith("hdfs")){
+      //TODO: perform hdfs validation
       return path
     } else {
-
-      val file = new File(jarFolder + path)
-      if (file.exists()) {
-        return jarFolder + path
+      val diskPath =
+        if(path.startsWith("/")){
+          path
+        } else {
+          jarFolder + getJarName(path)
+        }
+      val diskFile = new File(diskPath)
+      if (diskFile.exists()) {
+        return diskPath
       }
     }
 

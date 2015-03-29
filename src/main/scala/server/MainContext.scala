@@ -24,7 +24,7 @@ object MainContext {
     val config = ActorUtils.remoteConfig("localhost", port, defaultConfig)
     val system = ActorSystem(ActorUtils.PREFIX_CONTEXT_SYSTEM + contextName, config)
 
-    system.actorOf(Props(new ContextActor(jarsPath, defaultConfig)), ActorUtils.PREFIX_CONTEXT_ACTOR + contextName)
+    system.actorOf(Props(new ContextActor(defaultConfig)), ActorUtils.PREFIX_CONTEXT_ACTOR + contextName)
 
     println(s"Initialized system $ActorUtils.PREFIX_CONTEXT_SYSTEM$contextName and actor $ActorUtils.PREFIX_CONTEXT_SYSTEM$contextName")
 

@@ -20,12 +20,12 @@ import scala.util.{Failure, Success}
  */
 
 object ContextActor {
-  case class InitializeContext(contextName: String, config: Config)
+  case class InitializeContext(contextName: String, config: Config, jarsForSpark: List[String])
   case class Initialized()
   case class FailedInit(message: String)
 }
 
-class ContextActor(jarsPath: Array[String], localConfig: Config) extends Actor with ActorLogging{
+class ContextActor(localConfig: Config) extends Actor with ActorLogging{
 
   var sparkContext: SparkContext = _
   var defaultConfig: Config = _
@@ -40,7 +40,7 @@ class ContextActor(jarsPath: Array[String], localConfig: Config) extends Actor w
       sender ! IsAwake
     }
 
-    case InitializeContext(contextName, config) => {
+    case InitializeContext(contextName, config, jarsForSpark) => {
 
       println(s"Received InitializeContext message : contextName=$contextName")
       log.info("Initializing context " + contextName)
@@ -48,7 +48,7 @@ class ContextActor(jarsPath: Array[String], localConfig: Config) extends Actor w
       try {
 
         defaultConfig = config
-        val sparkConf = configToSparkConf(config,contextName, jarsPath)
+        val sparkConf = configToSparkConf(config,contextName, jarsForSpark)
         sparkContext = new SparkContext(sparkConf)
 
         sender ! Initialized
