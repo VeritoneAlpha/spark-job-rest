@@ -30,11 +30,13 @@ object ContextManagerActor {
   case class ContextInitialized(port: String)
   case class DeleteContext(contextName: String)
   case class GetContext(contextName: String)
+  case class GetAllContextsForClient()
   case class GetAllContexts()
   case class NoSuchContext()
   case class ContextAlreadyExists()
   case class DestroyProcess(process: Process)
   case class IsAwake()
+  case class ContextInfo(contextName: String, sparkUiPort: String, @transient referenceActor: ActorSelection)
 
 }
 
@@ -43,7 +45,7 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef) extends Act
   var lastUsedPort = getValueFromConfig(defaultConfig, "appConf.actor.systems.first.port", 11000)
   var lastUsedPortSparkUi = getValueFromConfig(defaultConfig, "appConf.spark.ui.first.port", 16000)
 
-  val contextMap = new HashMap[String, ActorSelection]() with SynchronizedMap[String, ActorSelection]
+  val contextMap = new HashMap[String, ContextInfo]() with SynchronizedMap[String, ContextInfo]
   val processMap = new HashMap[String, Process]() with SynchronizedMap[String, Process]
 
   val sparkUIConfigPath: String = "spark.ui.port"
@@ -104,9 +106,10 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef) extends Act
       case DeleteContext(contextName) => {
       println(s"Received DeleteContext message : context=$contextName")
       if (contextMap contains contextName) {
-        val contextRef = contextMap remove contextName get
+        val contextInfo = contextMap remove contextName get
         val processRef = processMap remove contextName get
-        val future = contextRef ! DeleteContext(contextName)
+
+        contextInfo.referenceActor ! DeleteContext(contextName)
         sender ! Success
 
         //If somehow the process didn't end
@@ -120,15 +123,19 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef) extends Act
     case GetContext(contextName) => {
       println(s"Received GetContext message : context=$contextName")
       if (contextMap contains contextName) {
-        sender ! contextMap(contextName)
+        sender ! contextMap(contextName).referenceActor
       } else {
         sender ! NoSuchContext
       }
     }
 
-    case GetAllContexts() => {
+    case GetAllContextsForClient() => {
       println(s"Received GetAllContexts message.")
-      sender ! contextMap.keys.mkString(",")
+      sender ! contextMap.values.map(contextInfo => (contextInfo.contextName, contextInfo.sparkUiPort))
+    }
+
+    case GetAllContexts() => {
+      sender ! contextMap.values.map(_.referenceActor)
     }
 
   }
@@ -151,7 +158,7 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef) extends Act
               println(s"Got the callback, meaning = $value")
               value match {
                 case Initialized => {
-                  contextMap += contextName -> actorRef
+                  contextMap += contextName -> ContextInfo(contextName, sparkUiPort, actorRef)
                   sender ! ContextInitialized(sparkUiPort)
                 }
                 case e:FailedInit => {

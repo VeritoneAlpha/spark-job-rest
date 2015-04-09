@@ -51,7 +51,7 @@ import spray.json.DefaultJsonProtocol._
     }
   }
 
-  def jobRoute: Route = pathPrefix("job"){
+  def jobRoute: Route = path("job"){
     get{
         parameters('contextName, 'jobId) { (contextName, jobId) =>
           respondWithMediaType(MediaTypes.`application/json`) { ctx =>
@@ -81,6 +81,18 @@ import spray.json.DefaultJsonProtocol._
               case NoSuchContext => ctx.complete(StatusCodes.BadRequest, "No such context.")
             }
           }
+        }
+      }
+    }
+  } ~
+  get{
+    path("jobs") {
+      respondWithMediaType(MediaTypes.`application/json`) { ctx =>
+        val resultFuture = jobManagerActor ? GetAllJobsStatus()
+        resultFuture.map{
+          case x:List[Any] => ctx.complete(StatusCodes.OK, x)
+          case e:Throwable => ctx.complete(StatusCodes.InternalServerError, e)
+          case x:String => ctx.complete(StatusCodes.InternalServerError, x)
         }
       }
     }
@@ -118,9 +130,9 @@ import spray.json.DefaultJsonProtocol._
     } ~
     get {
         respondWithMediaType(MediaTypes.`application/json`) { ctx =>
-          val resultFuture = contextManagerActor ? GetAllContexts()
+          val resultFuture = contextManagerActor ? GetAllContextsForClient()
           resultFuture.map {
-            case s: String => ctx.complete(StatusCodes.OK, s)
+            case s: List[Any] => ctx.complete(StatusCodes.OK, s)
             case e: Any => ctx.complete(StatusCodes.InternalServerError, e.toString)
           }
         }
@@ -169,7 +181,7 @@ import spray.json.DefaultJsonProtocol._
       respondWithMediaType(MediaTypes.`application/json`) { ctx =>
         val future = jarActor ? GetAllJars()
         future.map{
-          case list:List[String] => {
+          case list:List[Any] => {
             ctx.complete(StatusCodes.OK, list)
           }
         }

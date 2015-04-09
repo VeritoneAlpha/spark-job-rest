@@ -2,6 +2,7 @@ package server.domain.actors
 
 import akka.actor.{Actor, ActorLogging, Terminated}
 import api.{SparkJobValid, SparkJobInvalid, SparkJob}
+import com.google.gson.Gson
 import com.typesafe.config.Config
 import org.apache.commons.lang.exception.ExceptionUtils
 import org.apache.spark.SparkContext
@@ -30,7 +31,8 @@ class ContextActor(localConfig: Config) extends Actor with ActorLogging{
   var sparkContext: SparkContext = _
   var defaultConfig: Config = _
   var jobStateMap = new HashMap[String, JobStatus]() with SynchronizedMap[String, JobStatus]
-
+  var name = ""
+  val gsonTransformer = new Gson()
 
   startWatchingManagerActor()
 
@@ -44,6 +46,7 @@ class ContextActor(localConfig: Config) extends Actor with ActorLogging{
 
       println(s"Received InitializeContext message : contextName=$contextName")
       log.info("Initializing context " + contextName)
+      name = contextName
 
       try {
 
@@ -90,7 +93,7 @@ class ContextActor(localConfig: Config) extends Actor with ActorLogging{
       } andThen {
         case Success(result) => {
           println(s"Finished running job : runningClass=${job.runningClass} contextName=${job.contextName} uuid=${job.uuid} ")
-          jobStateMap += (job.uuid -> JobRunSuccess(result))
+          jobStateMap += (job.uuid -> JobRunSuccess(gsonTransformer.toJson(result)))
         }
         case Failure(e:Throwable) => {
           e.printStackTrace()
@@ -109,6 +112,14 @@ class ContextActor(localConfig: Config) extends Actor with ActorLogging{
 
     case JobStatusEnquiry(contextName, jobId) => {
       sender ! jobStateMap.getOrElse(jobId, JobDoesNotExist())
+    }
+
+    case GetAllJobsStatus() => {
+      sender ! jobStateMap.map {
+        case (id: String, x: JobRunSuccess) => (id, name, "Finished", x.result)
+        case (id: String, x: JobRunError) => (id, name, "Error", x.errorMessage)
+        case (id: String, x: JobStarted) => (id, name, "Running", "")
+      }.toList
     }
 
     case x @ _ => {

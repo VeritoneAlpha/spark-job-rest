@@ -25,6 +25,7 @@ object JarActor {
   case class CreateJarFolder(overwrite: Boolean)
   case class JarFolderExists()
   case class ResultJarsPathForAll(pathForClasspath: String, pathForSpark: List[String])
+  case class JarInfo(name: String, size: Long, timestamp: Long)
 
   val CLASSPATH_JAR_SEPARATOR = ":"
   val JAR_FOLDER_PROPERTY_PATH = "appConf.jars.path"
@@ -64,7 +65,8 @@ class JarActor(config: Config) extends Actor with ActorLogging{
       val folderJar = new File(jarFolder)
       val files = folderJar.listFiles()
       if(files != null){
-        sender ! files.map(_.getName).filter(_.endsWith(".jar")).toList
+        val jarInfos = files.map(jarFile => JarInfo(jarFile.getName, jarFile.length, jarFile.lastModified)).filter(_.name.endsWith(".jar")).toList
+        sender ! jarInfos
       } else {
         sender ! List()
       }
