@@ -51,26 +51,37 @@ import spray.json.DefaultJsonProtocol._
     }
   }
 
-  def jobRoute: Route = path("job"){
-    get{
-        parameters('contextName, 'jobId) { (contextName, jobId) =>
+  def jobRoute: Route = path("jobs"){
+    get {
+      respondWithMediaType(MediaTypes.`application/json`) { ctx =>
+        val resultFuture = jobManagerActor ? GetAllJobsStatus()
+        resultFuture.map {
+          case x: List[Any] => ctx.complete(StatusCodes.OK, x)
+          case e: Throwable => ctx.complete(StatusCodes.InternalServerError, e)
+          case x: String => ctx.complete(StatusCodes.InternalServerError, x)
+        }
+      }
+    } ~
+    get {
+      path(Segment) { jobId =>
+        parameters('contextName) { contextName =>
           respondWithMediaType(MediaTypes.`application/json`) { ctx =>
             val resultFuture = jobManagerActor ? JobStatusEnquiry(contextName, jobId)
-            resultFuture.map{
-              case x:JobRunSuccess => ctx.complete(StatusCodes.OK, resultToTable("Finished", x.result))
-              case x:JobRunError => ctx.complete(StatusCodes.InternalServerError, resultToTable("Error", x.errorMessage))
-              case x:JobStarted => ctx.complete(StatusCodes.OK, resultToTable("Running", ""))
-              case x:JobDoesNotExist => ctx.complete(StatusCodes.BadRequest, "JobId does not exist!")
+            resultFuture.map {
+              case x: JobRunSuccess => ctx.complete(StatusCodes.OK, resultToTable("Finished", x.result))
+              case x: JobRunError => ctx.complete(StatusCodes.InternalServerError, resultToTable("Error", x.errorMessage))
+              case x: JobStarted => ctx.complete(StatusCodes.OK, resultToTable("Running", ""))
+              case x: JobDoesNotExist => ctx.complete(StatusCodes.BadRequest, "JobId does not exist!")
               case NoSuchContext => ctx.complete(StatusCodes.BadRequest, "Context does not exist!")
-              case e:Throwable => ctx.complete(StatusCodes.InternalServerError, e)
-              case x:String => ctx.complete(StatusCodes.InternalServerError, x)
+              case e: Throwable => ctx.complete(StatusCodes.InternalServerError, e)
+              case x: String => ctx.complete(StatusCodes.InternalServerError, x)
             }
           }
         }
+      }
     } ~
-    post{
-      parameters('runningClass, 'context ) {
-          (runningClass, context) =>
+    post {
+      parameters('runningClass, 'context) { (runningClass, context) =>
         entity(as[String]) { configString =>
           val config = ConfigFactory.parseString(configString)
           respondWithMediaType(MediaTypes.`application/json`) { ctx =>
@@ -84,21 +95,9 @@ import spray.json.DefaultJsonProtocol._
         }
       }
     }
-  } ~
-  get{
-    path("jobs") {
-      respondWithMediaType(MediaTypes.`application/json`) { ctx =>
-        val resultFuture = jobManagerActor ? GetAllJobsStatus()
-        resultFuture.map{
-          case x:List[Any] => ctx.complete(StatusCodes.OK, x)
-          case e:Throwable => ctx.complete(StatusCodes.InternalServerError, e)
-          case x:String => ctx.complete(StatusCodes.InternalServerError, x)
-        }
-      }
-    }
   }
 
-    def contextRoute : Route = pathPrefix("context"){
+    def contextRoute : Route = pathPrefix("contexts"){
     post {
       path(Segment) { contextName =>
         entity(as[String]) { configString =>
@@ -151,7 +150,7 @@ import spray.json.DefaultJsonProtocol._
 
   }
 
-  def jarRoute : Route = pathPrefix("jar"){
+  def jarRoute : Route = pathPrefix("jars"){
     post {
       path(Segment) { jarName =>
         entity(as[Array[Byte]]) { jarBytes =>
