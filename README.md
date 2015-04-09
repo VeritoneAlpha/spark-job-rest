@@ -63,27 +63,43 @@ After editing all the configuration files SJR can be run by executing the script
 
 **Contexts**
 
-- POST /context/{contextName}  -  Create Context
+- POST /contexts/{contextName}  -  Create Context
 
  * Body:  Raw entity with key-value pairs. 
- * jars key is required and it should be in the form of a ':' separated list of jar paths. These jars will be added at Spark context creation time to the class path of the newly created context's JVM process.
+ * jars key is required and it should be in the form of a comma separated list of jar paths. These jars will be added at Spark context creation time to the class path of the newly created context's JVM process. There are 3 types of jar paths supported:
+    * Absolute path on the server side : /home/ubuntu/example.jar
+    * Name of the jar that was uploaded to the server : example.jar
+    * Hdfs path : hdfs://devbox.local:8020/user/test/example.jar
+  
   ``` 
- jars="/home/ubuntu/example.jar:/home/ubuntu/spark-job-project.jar”
+  Body example:
+ jars="/home/ubuntu/example.jar,example.jar,hdfs://devbox.local:8020/user/test/example.jar”
  spark.executor.memory=2g
  driver.xmxMemory = 1g
   ```
 
-- GET /context/{contextName}  -  returns Context exists. | No such context.
+- GET /contexts/{contextName}  -  returns Context exists. | No such context.
 
-- DELETE /context/{contextName}  -  Delete Context
+- DELETE /contexts/{contextName}  -  Delete Context
 
 **Jobs**
 
-- POST /job?runningClass={runningClass}&context={contextName}  - Job Submission 
+- POST /jobs?runningClass={runningClass}&context={contextName}  - Job Submission 
 
   * Body:  Raw entity with key-value pairs. Here you can set any configuration properties that will be passed to the config parameter of the validate and run methods of the provided jar (see the SparkJob definition below)
 
-- GET /job?jobId={uuid}&contextName={contextName} - Gets the result or status of a specific job
+- GET /jobs/{jobId}?contextName={contextName} - Gets the result or state of a specific job
+
+- GET /jobs - Gets the states/results of all jobs from all running contexts 
+
+**Jars**
+
+- POST /jars/{jarName}  - Upload jar
+  * Body: Jar Bytes
+
+- GET /jars - Gets all the uploaded jars
+
+- DELETE /jars/{jarName} - Delete jar
 
 ## Create Spark Job Project
 
