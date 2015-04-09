@@ -6,9 +6,29 @@ The main problem this project solves is the inability to run multiple Spark cont
 
 ## Building Spark-job-rest (SJR)
 
-The project is build with maven.
+The project is build with Maven3 and Java7.
 ```
 mvn clean install
+```
+
+If your build fails with this error:
+```
+[ERROR] spark-job-rest/src/main/scala/server/domain/actors/ContextManagerActor.scala:171: error: value redirectOutput is not a member of ProcessBuilder
+```
+This happens because Maven uses Java6. You can run mnv -version in order to check the Java version that Maven uses.
+```
+$ mvn -version
+Apache Maven 3.2.5
+Java version: 1.6.0_65
+```
+If Maven uses Java6 you need to change it to Java7. This can be done by adding the JAVA_HOME export in your ~/.mavenrc file:
+```
+OSX:
+export JAVA_HOME=/Library/Java/JavaVirtualMachines/{jdk-version}/Contents/Home
+```
+```
+Ubuntu:
+export JAVA_HOME=/usr/lib/jvm/{jdk-version}
 ```
 
 ## Configure Spark-job-rest
