@@ -28,6 +28,9 @@ import spray.json.DefaultJsonProtocol._
   implicit val system = originalSystem
   implicit val timeout = Timeout(60000)
 
+  val log = LoggerFactory.getLogger(getClass)
+  log.info("Starting web service.")
+
   var StateKey = "state"
   var ResultKey = "result"
 
@@ -35,12 +38,11 @@ import spray.json.DefaultJsonProtocol._
   val webIp = getValueFromConfig(config, "appConf.web.services.ip", "0.0.0.0")
   val webPort = getValueFromConfig(config, "appConf.web.services.port", 8097)
 
-  val logger = LoggerFactory.getLogger(getClass)
-  logger.info("Starting web service.")
-
 
   val route = jobRoute  ~ contextRoute ~ indexRoute
   startServer(webIp, webPort) (route)
+
+  log.info("Started web service.")
 
   def indexRoute: Route = pathPrefix("index"){
     get {
@@ -98,7 +100,6 @@ import spray.json.DefaultJsonProtocol._
               case ContextInitialized(sparkUiPort) => ctx.complete(StatusCodes.OK, sparkUiPort)
               case e:FailedInit => ctx.complete(StatusCodes.InternalServerError, "Failed Init: " + e.message)
               case ContextAlreadyExists => ctx.complete(StatusCodes.BadRequest, "Context already exists.")
-              case e @ _ => println(e)
             }
           }
         }

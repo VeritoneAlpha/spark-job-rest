@@ -2,6 +2,7 @@ package server.domain.actors
 
 import akka.actor._
 import akka.pattern.ask
+import org.slf4j.LoggerFactory
 
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
@@ -19,10 +20,11 @@ object ReTry {
 
 }
 
-class ReTry(val tries: Int, retryTimeOut: FiniteDuration, retryInterval: FiniteDuration, forwardTo: ActorSelection) extends Actor with ActorLogging {
+class ReTry(val tries: Int, retryTimeOut: FiniteDuration, retryInterval: FiniteDuration, forwardTo: ActorSelection) extends Actor {
 
   import context.dispatcher
   import server.domain.actors.ReTry._
+  val log = LoggerFactory.getLogger(getClass)
 
   // Retry loop that keep on Re-trying the request
   def retryLoop: Receive = {

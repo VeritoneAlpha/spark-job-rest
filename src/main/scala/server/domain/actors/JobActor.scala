@@ -2,10 +2,10 @@ package server.domain.actors
 
 import java.util.UUID
 
-import akka.actor.{Actor, ActorLogging, ActorRef, ActorSelection}
+import akka.actor.{Actor, ActorRef, ActorSelection}
 import akka.pattern.ask
 import com.typesafe.config.Config
-import org.apache.commons.lang.exception.ExceptionUtils
+import org.slf4j.LoggerFactory
 import server.domain.actors.ContextManagerActor.{GetContext, NoSuchContext}
 import server.domain.actors.JobActor._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -35,11 +35,13 @@ object JobActor {
 }
 
 
-class JobActor(config: Config, contextManagerActor: ActorRef) extends Actor with ActorLogging {
+class JobActor(config: Config, contextManagerActor: ActorRef) extends Actor {
+
+  val log = LoggerFactory.getLogger(getClass)
 
   override def receive: Receive = {
     case job: RunJob => {
-      println(s"Received RunJob message : runningClass=${job.runningClass} context=${job.contextName} uuid=${job.uuid}")
+      log.info(s"Received RunJob message : runningClass=${job.runningClass} context=${job.contextName} uuid=${job.uuid}")
 
       val fromWebApi = sender
 
@@ -49,23 +51,23 @@ class JobActor(config: Config, contextManagerActor: ActorRef) extends Actor with
 
           fromWebApi ! job.uuid
 
-          println(s"Sending RunJob message to actor $contextRef")
+          log.info(s"Sending RunJob message to actor $contextRef")
           contextRef ! job
         }
         case NoSuchContext => fromWebApi ! NoSuchContext
-        case e @ _ => println(s"Received UNKNOWN TYPE when asked for context. Type received $e")
+        case e @ _ => log.warn(s"Received UNKNOWN TYPE when asked for context. Type received $e")
       }
       future onFailure  {
         case e => {
           fromWebApi ! e
-          println(s"An error has occured: ${ExceptionUtils.getStackTrace(e)}")
+          log.error(s"An error has occured.", e)
         }
       }
     }
 
 
     case jobEnquiry:JobStatusEnquiry => {
-      println(s"Received JobStatusEnquiry message : uuid=${jobEnquiry.jobId}")
+      log.info(s"Received JobStatusEnquiry message : uuid=${jobEnquiry.jobId}")
       val fromWebApi = sender
 
 
@@ -78,11 +80,11 @@ class JobActor(config: Config, contextManagerActor: ActorRef) extends Actor with
 
           enquiryFuture onSuccess{
             case state:JobStatus => {
-              println("Job with id: " + jobEnquiry.jobId + "  has state : " + state)
+              log.info("Job with id: " + jobEnquiry.jobId + "  has state : " + state)
               fromWebApi ! state
             }
             case x:Any => {
-              println(s"Received $x TYPE when asked for job enquiry.")
+              log.info(s"Received $x TYPE when asked for job enquiry.")
               fromWebApi ! x
             }
           }
@@ -90,18 +92,18 @@ class JobActor(config: Config, contextManagerActor: ActorRef) extends Actor with
           enquiryFuture onFailure{
             case e => {
               fromWebApi ! e
-              println(s"An error has occured: ${ExceptionUtils.getStackTrace(e)}")
+              log.error(s"An error has occured.", e)
             }
           }
         }
         case NoSuchContext => fromWebApi ! NoSuchContext
-        case e @ _ => println(s"Received UNKNOWN TYPE when asked for context. Type received $e")
+        case e @ _ => log.warn(s"Received UNKNOWN TYPE when asked for context. Type received $e")
       }
 
       contextActorFuture onFailure  {
         case e => {
           fromWebApi ! e
-          println(s"An error has occured: ${ExceptionUtils.getStackTrace(e)}")
+          log.error(s"An error has occured.", e)
         }
       }
     }

@@ -59,7 +59,16 @@ fi
 # Pull in other env vars in spark config, such as MESOS_NATIVE_LIBRARY
 . $SPARK_CONF_HOME/spark-env.sh
 
-LOGGING_OPTS="-Dlog4j.configuration=log4j-server.properties"
+if [ -z "$LOG_DIR" ]; then
+  LOG_DIR=$parentdir/logs
+  echo "LOG_DIR empty; logging will go to $LOG_DIR"
+fi
+mkdir -p $LOG_DIR
+
+LOGGING_OPTS="-Dlog4j.configuration=log4j.properties
+              -DLOG_DIR=$LOG_DIR
+              -DLOG_FILE=$contextName.log"
+
 # For Mesos
 #CONFIG_OVERRIDES="-Dspark.executor.uri=$SPARK_EXECUTOR_URI "
 # For Mesos/Marathon, use the passed-in port
@@ -76,4 +85,4 @@ export SPARK_HOME
 CLASSPATH="$parentdir/resources:$appdir:$parentdir/spark-job-rest.jar:$($SPARK_HOME/bin/compute-classpath.sh):$classpathParam"
 echo $CLASSPATH
 
-exec java -cp $CLASSPATH $GC_OPTS $JAVA_OPTS $LOGGING_OPTS $CONFIG_OVERRIDES $MAIN $conffile $classpathParam $contextName $port >"logs/$2.log" 2>&1
+exec java -cp $CLASSPATH $GC_OPTS $JAVA_OPTS $LOGGING_OPTS $CONFIG_OVERRIDES $MAIN $conffile $classpathParam $contextName $port > /dev/null 2>&1  &
