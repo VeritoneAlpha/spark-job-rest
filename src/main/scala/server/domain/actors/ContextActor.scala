@@ -7,6 +7,7 @@ import com.typesafe.config.Config
 import org.apache.commons.lang.exception.ExceptionUtils
 import org.apache.spark.SparkContext
 import ContextManagerActor.{DeleteContext, IsAwake}
+import org.slf4j.LoggerFactory
 import server.domain.actors.JobActor._
 import server.domain.actors.ContextActor._
 import utils.ActorUtils
@@ -26,13 +27,16 @@ object ContextActor {
   case class FailedInit(message: String)
 }
 
-class ContextActor(localConfig: Config) extends Actor with ActorLogging{
+class ContextActor(localConfig: Config) extends Actor {
 
   var sparkContext: SparkContext = _
   var defaultConfig: Config = _
   var jobStateMap = new HashMap[String, JobStatus]() with SynchronizedMap[String, JobStatus]
+
   var name = ""
   val gsonTransformer = new Gson()
+
+  val log = LoggerFactory.getLogger(getClass)
 
   startWatchingManagerActor()
 
@@ -44,7 +48,7 @@ class ContextActor(localConfig: Config) extends Actor with ActorLogging{
 
     case InitializeContext(contextName, config, jarsForSpark) => {
 
-      println(s"Received InitializeContext message : contextName=$contextName")
+      log.info(s"Received InitializeContext message : contextName=$contextName")
       log.info("Initializing context " + contextName)
       name = contextName
 
@@ -58,23 +62,22 @@ class ContextActor(localConfig: Config) extends Actor with ActorLogging{
         log.info("Successfully initialized context " + contextName)
       } catch {
         case e:Exception => {
-          e.printStackTrace()
+          log.error("Exception while initializing", e)
           sender ! FailedInit(ExceptionUtils.getStackTrace(e))
-
           gracefullyShutdown
         }
       }
     }
 
     case DeleteContext(contextName) => {
-      println(s"Received DeleteContext message : contextName=$contextName")
+      log.info(s"Received DeleteContext message : contextName=$contextName")
       log.info("Shutting down SparkContext {}", contextName)
 
       gracefullyShutdown
     }
 
     case job:RunJob => {
-      println(s"Received RunJob message : runningClass=${job.runningClass} contextName=${job.contextName} uuid=${job.uuid} ")
+      log.info(s"Received RunJob message : runningClass=${job.runningClass} contextName=${job.contextName} uuid=${job.uuid} ")
       jobStateMap += (job.uuid -> JobStarted())
 
       Future {
@@ -85,27 +88,26 @@ class ContextActor(localConfig: Config) extends Actor with ActorLogging{
           val status = sparkJob.validate(sparkContext, job.config.withFallback(defaultConfig))
           status match {
             case SparkJobInvalid(message) => throw new Exception(message)
-            case SparkJobValid() => println("Validation passed.")
+            case SparkJobValid() => log.info("Validation passed.")
           }
 
           sparkJob.runJob(sparkContext, job.config.withFallback(defaultConfig))
 
       } andThen {
         case Success(result) => {
-          println(s"Finished running job : runningClass=${job.runningClass} contextName=${job.contextName} uuid=${job.uuid} ")
+          log.info(s"Finished running job : runningClass=${job.runningClass} contextName=${job.contextName} uuid=${job.uuid} ")
           jobStateMap += (job.uuid -> JobRunSuccess(gsonTransformer.toJson(result)))
         }
         case Failure(e:Throwable) => {
-          e.printStackTrace()
           jobStateMap += (job.uuid -> JobRunError(ExceptionUtils.getStackTrace(e)))
-          println(s"Error running job : runningClass=${job.runningClass} contextName=${job.contextName} uuid=${job.uuid} ")
+          log.error(s"Error running job : runningClass=${job.runningClass} contextName=${job.contextName} uuid=${job.uuid} ", e)
         }
       }
     }
     case Terminated(actor) => {
       if(actor.path.toString.contains("Supervisor/ContextManager")){
-        println(s"Received TERMINATED message from: ${actor.path.toString}")
-        println("Shutting down the system because the ManagerSystem terminated.")
+        log.info(s"Received TERMINATED message from: ${actor.path.toString}")
+        log.warn("Shutting down the system because the ManagerSystem terminated.")
         gracefullyShutdown
       }
     }
@@ -123,7 +125,7 @@ class ContextActor(localConfig: Config) extends Actor with ActorLogging{
     }
 
     case x @ _ => {
-      println(s"Received UNKNOWN message type $x")
+      log.info(s"Received UNKNOWN message type $x")
     }
   }
 
@@ -136,10 +138,10 @@ class ContextActor(localConfig: Config) extends Actor with ActorLogging{
     val managerActor = context.actorSelection(ActorUtils.getActorAddress("ManagerSystem", getValueFromConfig(localConfig,"manager.akka.remote.netty.tcp.port", 4042), "Supervisor/ContextManager"))
     managerActor.resolveOne().onComplete {
       case Success(actorRef) => {
-        println(s"Now watching the ContextManager from this actor.")
+        log.info(s"Now watching the ContextManager from this actor.")
         context.watch(actorRef)
       }
-      case x @ _ => println(s"Received message of type $x")
+      case x @ _ => log.info(s"Received message of type $x")
     }
   }
 }
