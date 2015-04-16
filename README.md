@@ -31,6 +31,12 @@ Ubuntu:
 export JAVA_HOME=/usr/lib/jvm/{jdk-version}
 ```
 
+If running from IDE fails with:
+```
+Exception in thread "main" java.lang.NoClassDefFoundError: akka/actor/Props
+```
+This happens because the spark dependency has the provided scope. In order to run from IDE you can remove the provided scope for the spark dependency(inside pom.xml) or you can add the spark assembly jar to the running classpath.
+
 ## Configure Spark-job-rest
 
 In order to configure SJR the following file needs to be edited: resources/application.conf
