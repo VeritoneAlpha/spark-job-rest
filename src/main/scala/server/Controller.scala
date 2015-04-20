@@ -48,19 +48,52 @@ import spray.json.DefaultJsonProtocol._
 
   def indexRoute: Route = pathPrefix("index"){
     get {
-      complete{
-        "Spark Job Rest is up and running!"
-      }
+      getFromResource("webapp/1.html")
     } ~ options {
-      corsFilter(List("*"), HttpHeaders.`Access-Control-Allow-Methods`(Seq(HttpMethods.OPTIONS, HttpMethods.GET, HttpMethods.POST, HttpMethods.DELETE))) {
+      corsFilter(List("*"), HttpHeaders.`Access-Control-Allow-Methods`(Seq(HttpMethods.OPTIONS, HttpMethods.GET))) {
         complete {
           "OK"
         }
       }
     }
+  } ~
+  pathPrefix("assets"){
+    get {
+      getFromResourceDirectory("webapp/assets")
+    } ~ options {
+      corsFilter(List("*"), HttpHeaders.`Access-Control-Allow-Methods`(Seq(HttpMethods.OPTIONS, HttpMethods.GET))) {
+        complete {
+          "OK"
+        }
+      }
+    }
+  } ~
+  pathPrefix("js"){
+    get {
+      getFromResourceDirectory("webapp/js")
+    } ~ options {
+      corsFilter(List("*"), HttpHeaders.`Access-Control-Allow-Methods`(Seq(HttpMethods.OPTIONS, HttpMethods.GET))) {
+        complete {
+          "OK"
+        }
+      }
+    }
+  } ~ path("hearbeat") {
+    get {
+      complete {
+        "Spark Job Rest is up and running!"
+      } ~ options {
+        corsFilter(List("*"), HttpHeaders.`Access-Control-Allow-Methods`(Seq(HttpMethods.OPTIONS, HttpMethods.GET))) {
+          complete {
+            "OK"
+          }
+        }
+      }
+    }
   }
 
-  def jobRoute: Route = path("jobs"){
+
+  def jobRoute: Route = pathPrefix("jobs"){
     get {
       corsFilter(List("*")) {
         respondWithMediaType(MediaTypes.`application/json`) { ctx =>
