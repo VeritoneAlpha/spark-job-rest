@@ -34,7 +34,7 @@ object JarUtils {
       return diskPath
     }
 
-    throw new Exception(s"Jar $path  could not be resolved.")
+    throw new Exception(s"Jar $path not found.")
   }
 
 
@@ -63,7 +63,7 @@ object JarUtils {
       }
     }
 
-    throw new Exception(s"Jar $path  could not be resolved.")
+    throw new Exception(s"Jar $path not found.")
   }
 
 }

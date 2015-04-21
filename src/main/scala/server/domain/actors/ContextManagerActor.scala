@@ -93,14 +93,14 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef) extends Act
 
               }
               case e:Exception => {
-                println(s"Received exception on success!!! ${ExceptionUtils.getStackTrace(e)}");
+                log.error(s"Received exception on success!!! ${ExceptionUtils.getStackTrace(e)}");
+                webSender ! e
               }
             }
           }
           case Failure(e) => {
-            println("FAILED to get the jars path!")
-            e.printStackTrace
-            sender ! Failure(e)
+            log.error("FAILED to get the jars path!", e)
+            sender ! e
           }
         }
 

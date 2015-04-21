@@ -18,6 +18,7 @@ object JarActor {
   case class NoSuchJar()
   case class DeleteJar(jarName: String)
   case class GetAllJars()
+  case class GetAllJarsNames()
   case class GetJarsPathForClasspath(paths: String, contextName: String)
   case class GetJarsPathForSpark(paths: String)
   case class GetJarsPathForAll(paths: String, contextName: String)
@@ -26,6 +27,7 @@ object JarActor {
   case class JarFolderExists()
   case class ResultJarsPathForAll(pathForClasspath: String, pathForSpark: List[String])
   case class JarInfo(name: String, size: Long, timestamp: Long)
+
 
   val CLASSPATH_JAR_SEPARATOR = ":"
   val JAR_FOLDER_PROPERTY_PATH = "appConf.jars.path"
@@ -71,15 +73,43 @@ class JarActor(config: Config) extends Actor with ActorLogging{
         sender ! List()
       }
     }
+    case GetAllJarsNames() => {
+      val folderJar = new File(jarFolder)
+      val files = folderJar.listFiles()
+      if(files != null){
+        val jarNames = files.map(_.getName).filter(_.endsWith(".jar")).toList
+        sender ! jarNames
+      } else {
+        sender ! List()
+      }
+    }
     case GetJarsPathForClasspath(path, contextName) => {
-      sender ! getJarsPathForClasspath(path, contextName)
+
+      Try {
+        getJarsPathForClasspath(path, contextName)
+      } match {
+        case Success(path) => sender ! path
+        case Failure(e) => sender ! e
+      }
+
     }
     case GetJarsPathForSpark(path) => {
-      sender ! getJarsPathForSpark(path)
+      Try {
+        sender ! getJarsPathForSpark(path)
+      } match {
+        case Success(path) => sender ! path
+        case Failure(e) => sender ! e
+      }
     }
 
     case GetJarsPathForAll(paths: String, contextName: String) => {
-      sender ! ResultJarsPathForAll(getJarsPathForClasspath(paths, contextName), getJarsPathForSpark(paths))
+      Try {
+        ResultJarsPathForAll(getJarsPathForClasspath(paths, contextName), getJarsPathForSpark(paths))
+      } match {
+        case Success(result) => sender ! result
+        case Failure(e) => sender ! e
+      }
+
     }
 
     case DeleteJarFolder() => {
@@ -105,7 +135,7 @@ class JarActor(config: Config) extends Actor with ActorLogging{
     jarSparkPathList.toList
   }
 
-  def getJarsPathForClasspath(path: String, contextName: String): String = {
+  def getJarsPathForClasspath(path: String, contextName: String) = {
     var jarClasspath = ""
     path.split(",").foreach { x =>
       jarClasspath += JarUtils.getPathForClasspath(x, jarFolder, contextName) + CLASSPATH_JAR_SEPARATOR

@@ -100,7 +100,7 @@ import spray.json.DefaultJsonProtocol._
           val resultFuture = jobManagerActor ? GetAllJobsStatus()
           resultFuture.map {
             case x: List[Any] => ctx.complete(StatusCodes.OK, x)
-            case e: Throwable => ctx.complete(StatusCodes.InternalServerError, e)
+            case e: Throwable => ctx.complete(StatusCodes.InternalServerError, e.getMessage)
             case x: String => ctx.complete(StatusCodes.InternalServerError, x)
           }
         }
@@ -118,7 +118,7 @@ import spray.json.DefaultJsonProtocol._
                 case x: JobStarted => ctx.complete(StatusCodes.OK, resultToTable("Running", ""))
                 case x: JobDoesNotExist => ctx.complete(StatusCodes.BadRequest, "JobId does not exist!")
                 case NoSuchContext => ctx.complete(StatusCodes.BadRequest, "Context does not exist!")
-                case e: Throwable => ctx.complete(StatusCodes.InternalServerError, e)
+                case e: Throwable => ctx.complete(StatusCodes.InternalServerError, e.getMessage)
                 case x: String => ctx.complete(StatusCodes.InternalServerError, x)
               }
             }
@@ -135,7 +135,7 @@ import spray.json.DefaultJsonProtocol._
               val resultFuture = jobManagerActor ? RunJob(runningClass, context, config)
               resultFuture.map {
                 case x: String => ctx.complete(StatusCodes.OK, x)
-                case e: Error => ctx.complete(StatusCodes.InternalServerError, e)
+                case e: Error => ctx.complete(StatusCodes.InternalServerError, e.getMessage)
                 case NoSuchContext => ctx.complete(StatusCodes.BadRequest, "No such context.")
               }
             }
@@ -152,7 +152,6 @@ import spray.json.DefaultJsonProtocol._
       }
 
   }
-
     def contextRoute : Route = pathPrefix("contexts"){
     post {
       path(Segment) { contextName =>
@@ -167,6 +166,7 @@ import spray.json.DefaultJsonProtocol._
                 case ContextInitialized(sparkUiPort) => ctx.complete(StatusCodes.OK, sparkUiPort)
                 case e: FailedInit => ctx.complete(StatusCodes.InternalServerError, "Failed Init: " + e.message)
                 case ContextAlreadyExists => ctx.complete(StatusCodes.BadRequest, "Context already exists.")
+                case e: Throwable => ctx.complete(StatusCodes.InternalServerError, e.getMessage)
               }
             }
           }
@@ -243,7 +243,7 @@ import spray.json.DefaultJsonProtocol._
             resultFuture.map {
               case NoSuchJar() => ctx.complete(StatusCodes.BadRequest, "No such jar.")
               case Success(message: String) => ctx.complete(StatusCodes.OK, message)
-              case x: Exception => ctx.complete(StatusCodes.InternalServerError, x.getMessage)
+              case e: Throwable => ctx.complete(StatusCodes.InternalServerError, e.getMessage)
             }
           }
         }

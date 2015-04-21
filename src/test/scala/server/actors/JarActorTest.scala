@@ -55,7 +55,7 @@ class JarActorTest extends FunSuite with BeforeAndAfter with ScalaFutures with M
     val Success(resultExists: Boolean) = future.value.get
     resultExists should be(true)
 
-    future = jarActor ? GetAllJars()
+    future = jarActor ? GetAllJarsNames()
     val Success(result: List[String]) = future.value.get
     result should be( Nil )
 
@@ -69,7 +69,7 @@ class JarActorTest extends FunSuite with BeforeAndAfter with ScalaFutures with M
     val Success(result: Success[String]) = future.value.get
     result should be (Success("Jar successfully saved."))
 
-    future = jarActor ? GetAllJars()
+    future = jarActor ? GetAllJarsNames()
     val Success(resultJars: List[String]) = future.value.get
     resultJars should be( List(jarName) )
 
@@ -77,7 +77,7 @@ class JarActorTest extends FunSuite with BeforeAndAfter with ScalaFutures with M
     val Success(deleteResult: Success[String]) = future.value.get
     deleteResult should be( Success("Jar deleted.") )
 
-    future = jarActor ? GetAllJars()
+    future = jarActor ? GetAllJarsNames()
     val Success(emptyJarList: List[String]) = future.value.get
     emptyJarList should be( Nil )
 
@@ -89,7 +89,7 @@ class JarActorTest extends FunSuite with BeforeAndAfter with ScalaFutures with M
       var future = jarActor ? AddJar(jarName, getTestJarBytes())
     }
 
-    val future = jarActor ? GetAllJars()
+    val future = jarActor ? GetAllJarsNames()
     val Success(emptyJarList: List[String]) = future.value.get
     emptyJarList.size should be( 10 )
   }
