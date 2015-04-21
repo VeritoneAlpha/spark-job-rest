@@ -113,14 +113,18 @@ Add maven Spark-Job-Rest dependency:
 ```
 <dependency>
     <groupId>com.xpatterns</groupId>
-    <artifactId>spark-job-rest</artifactId>
-    <version>0.2.0</version>
+    <artifactId>spark-job-rest-api</artifactId>
+    <version>0.3.0</version>
 </dependency>
 ```
 
 To create a job that can be submitted through the server, the class must implement the SparkJob trait.
 
 ```
+import com.typesafe.config.Config
+import org.apache.spark.SparkContext
+import api.{SparkJobInvalid, SparkJobValid, SparkJobValidation, SparkJob}
+
 class Example extends SparkJob {
     override def runJob(sc:SparkContext, jobConfig: Config): Any = { ... }
     override def validate(sc:SparkContext, config: Config): SparkJobValidation = { ... }
@@ -132,12 +136,12 @@ class Example extends SparkJob {
 
 ## Example
 
-An example for this project can be found here: ```spark-job-rest/example/example-job```. In order to package it, run 
+An example for this project can be found here: ```spark-job-rest/examples/example-job```. In order to package it, run 
 ``` mvn clean install ```
 
 **Create a context**
 ```
-$ curl -X POST -d "jars=/Users/raduc/projects/spark-job-rest/example/example-job/target/example-job.jar" 'localhost:8097/context/test-context'
+$ curl -X POST -d "jars=/Users/raduc/projects/spark-job-rest/example/example-job/target/example-job.jar" 'localhost:8097/contexts/test-context'
 
 16001
 ```
@@ -147,7 +151,7 @@ The received answer ```16001``` represents the spark ui port for your applicatio
 **Check if context exists**
 
 ```
-curl 'localhost:8097/context/test-context'
+curl 'localhost:8097/contexts/test-context'
 
 Context exists.
 ```
@@ -155,7 +159,7 @@ Context exists.
 **Run job** - The example job creates an RDD from a Range(0,input) and applies count on it.
 
 ```
-$ curl -X POST -d "input=10000" 'localhost:8097/job?runningClass=com.job.SparkJobImplemented&context=test-context'
+$ curl -X POST -d "input=10000" 'localhost:8097/jobs?runningClass=com.job.SparkJobImplemented&context=test-context'
 
 bf880779-f5dc-4ff1-823e-c4bc72621385
 ```
@@ -165,7 +169,7 @@ The received answer ```bf880779-f5dc-4ff1-823e-c4bc72621385``` represents the jo
 **Query for results**
 
 ```
-$ curl 'localhost:8097/job?contextName=test-context&jobId=bf880779-f5dc-4ff1-823e-c4bc72621385'
+$ curl 'localhost:8097/jobs?contextName=test-context&jobId=bf880779-f5dc-4ff1-823e-c4bc72621385'
 
 {
   "state": "Finished",
@@ -176,7 +180,7 @@ $ curl 'localhost:8097/job?contextName=test-context&jobId=bf880779-f5dc-4ff1-823
 **Delete context**
 
 ```
-curl -X DELETE 'localhost:8097/context/test-context'
+curl -X DELETE 'localhost:8097/contexts/test-context'
 
 Context deleted.
 ```
