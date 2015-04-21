@@ -15,7 +15,7 @@ If your build fails with this error:
 ```
 [ERROR] spark-job-rest/src/main/scala/server/domain/actors/ContextManagerActor.scala:171: error: value redirectOutput is not a member of ProcessBuilder
 ```
-This happens because Maven uses Java6. You can run mnv -version in order to check the Java version that Maven uses.
+This happens because Maven uses Java6. You can run mvn -version in order to check the Java version that Maven uses.
 ```
 $ mvn -version
 Apache Maven 3.2.5
