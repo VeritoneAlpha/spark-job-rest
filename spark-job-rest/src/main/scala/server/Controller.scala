@@ -15,7 +15,7 @@ import akka.pattern.ask
 import server.domain.actors.getValueFromConfig
 
 import scala.concurrent.ExecutionContext
-import scala.util.{Failure, Success}
+import scala.util.{Try, Failure, Success}
 import ExecutionContext.Implicits.global
 import JsonUtils._
 import spray.httpx.SprayJsonSupport.sprayJsonMarshaller
@@ -130,13 +130,19 @@ import spray.json.DefaultJsonProtocol._
       parameters('runningClass, 'context) { (runningClass, context) =>
         entity(as[String]) { configString =>
           corsFilter(List("*")) {
-            val config = ConfigFactory.parseString(configString)
             respondWithMediaType(MediaTypes.`application/json`) { ctx =>
-              val resultFuture = jobManagerActor ? RunJob(runningClass, context, config)
-              resultFuture.map {
-                case x: String => ctx.complete(StatusCodes.OK, x)
-                case e: Error => ctx.complete(StatusCodes.InternalServerError, e.getMessage)
-                case NoSuchContext => ctx.complete(StatusCodes.BadRequest, "No such context.")
+              Try{
+                ConfigFactory.parseString(configString)
+              } match {
+                case Success(requestConfig) => {
+                  val resultFuture = jobManagerActor ? RunJob(runningClass, context, requestConfig)
+                  resultFuture.map {
+                    case x: String => ctx.complete(StatusCodes.OK, x)
+                    case e: Error => ctx.complete(StatusCodes.InternalServerError, e.getMessage)
+                    case NoSuchContext => ctx.complete(StatusCodes.BadRequest, "No such context.")
+                  }
+                }
+                case Failure(e) => ctx.complete(StatusCodes.BadRequest, "Invalid parameter: " + e.getMessage)
               }
             }
           }
@@ -158,16 +164,22 @@ import spray.json.DefaultJsonProtocol._
         entity(as[String]) { configString =>
           corsFilter(List("*")) {
             respondWithMediaType(MediaTypes.`application/json`) { ctx =>
-
-              val config = ConfigFactory.parseString(configString)
-
-              val resultFuture = contextManagerActor ? CreateContext(contextName, getValueFromConfig(config, "jars", ""), config)
-              resultFuture.map {
-                case ContextInitialized(sparkUiPort) => ctx.complete(StatusCodes.OK, sparkUiPort)
-                case e: FailedInit => ctx.complete(StatusCodes.InternalServerError, "Failed Init: " + e.message)
-                case ContextAlreadyExists => ctx.complete(StatusCodes.BadRequest, "Context already exists.")
-                case e: Throwable => ctx.complete(StatusCodes.InternalServerError, e.getMessage)
+              Try{
+                ConfigFactory.parseString(configString)
+              } match {
+                case Success(requestConfig) => {
+                  val resultFuture = contextManagerActor ? CreateContext(contextName, getValueFromConfig(requestConfig, "jars", ""), requestConfig)
+                  resultFuture.map {
+                    case ContextInitialized(sparkUiPort) => ctx.complete(StatusCodes.OK, sparkUiPort)
+                    case e: FailedInit => ctx.complete(StatusCodes.InternalServerError, "Failed Init: " + e.message)
+                    case ContextAlreadyExists => ctx.complete(StatusCodes.BadRequest, "Context already exists.")
+                    case e: Throwable => ctx.complete(StatusCodes.InternalServerError, e.getMessage)
+                  }
+                }
+                case Failure(e) => ctx.complete(StatusCodes.BadRequest, "Invalid parameters: " + e.getMessage)
               }
+
+
             }
           }
         }
