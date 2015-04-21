@@ -57,6 +57,8 @@ class S3DownloadJob extends SparkJob {
     }.collect()
     log.warn(s"There were ${errorFiles.size} files with error")
     errorFiles.foreach(t => log.error(t.toString()))
+
+    errorFiles
   }
 
   override def validate(sc: SparkContext, config: Config): SparkJobValidation = {
