@@ -2,19 +2,15 @@
 # Script to start the job server
 set -e
 
-parentdir="$(dirname "$dir")"
-
 get_abs_script_path() {
   pushd . >/dev/null
   cd $(dirname $0)
   appdir=$(pwd)
   popd  >/dev/null
 }
-
 get_abs_script_path
 
 parentdir="$(dirname "$appdir")"
-echo "parentdir = $parentdir"
 
 GC_OPTS="-XX:+UseConcMarkSweepGC
          -verbose:gc -XX:+PrintGCTimeStamps -Xloggc:$appdir/gc.out
@@ -28,9 +24,10 @@ JAVA_OPTS="-Xmx1g -XX:MaxDirectMemorySize=512M
 
 MAIN="server.Main"
 
-conffile=$(ls -1 $parentdir/resources/*.conf | head -1)
-if [ -z "$conffile" ]; then
-  echo "No configuration file found"
+conffile="$parentdir/resources/application.conf"
+
+if [ ! -f "$conffile" ]; then
+  echo "No configuration file $conffile found"
   exit 1
 fi
 
@@ -55,7 +52,7 @@ fi
 
 
 if [ -z "$LOG_DIR" ]; then
-  LOG_DIR=$parentdir/logs
+  LOG_DIR="$parentdir/logs"
   echo "LOG_DIR empty; logging will go to $LOG_DIR"
 fi
 mkdir -p $LOG_DIR
@@ -67,7 +64,7 @@ LOGGING_OPTS="-Dlog4j.configuration=log4j.properties
 # For Mesos
 #CONFIG_OVERRIDES="-Dspark.executor.uri=$SPARK_EXECUTOR_URI "
 # For Mesos/Marathon, use the passed-in port
-if [ "$PORT" != "" ]; then
+if [ -n "$PORT" ]; then
   CONFIG_OVERRIDES+="-Dspark.jobserver.port=$PORT "
 fi
 
@@ -82,3 +79,4 @@ echo "CLASSPATH = $CLASSPATH"
 
 
 exec java -cp $CLASSPATH $GC_OPTS $JAVA_OPTS $LOGGING_OPTS $CONFIG_OVERRIDES $MAIN $conffile  > /dev/null 2>&1 &
+echo $! > $appdir/server.pid

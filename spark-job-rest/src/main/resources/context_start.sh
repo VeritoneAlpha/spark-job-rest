@@ -2,8 +2,16 @@
 # Script to start the job server
 set -e
 
-dir=`dirname $0`
-parentdir="$(dirname "$dir")"
+get_abs_script_path() {
+  pushd . >/dev/null
+  cd $(dirname $0)
+  appdir=$(pwd)
+  popd  >/dev/null
+}
+get_abs_script_path
+
+parentdir="$(dirname "$appdir")"
+
 classpathParam=$1
 contextName=$2
 port=$3
@@ -13,14 +21,6 @@ echo "classpathParam = $classpathParam"
 echo "contextName = $contextName"
 echo "port = $port"
 
-get_abs_script_path() {
-  pushd . >/dev/null
-  cd $(dirname $0)
-  appdir=$(pwd)
-  popd  >/dev/null
-}
-
-get_abs_script_path
 
 GC_OPTS="-XX:+UseConcMarkSweepGC
          -verbose:gc -XX:+PrintGCTimeStamps -Xloggc:$appdir/gc.out
@@ -34,21 +34,21 @@ JAVA_OPTS="-Xmx$xmxMemory -XX:MaxDirectMemorySize=512M
 
 MAIN="server.MainContext"
 
-conffile=$(ls -1 $dir/*.conf | head -1)
+conffile=$(ls -1 $appdir/*.conf | head -1)
 if [ -z "$conffile" ]; then
   echo "No configuration file found"
   exit 1
 fi
 
-if [ -f "$dir/settings.sh" ]; then
-  . $dir/settings.sh
+if [ -f "$appdir/settings.sh" ]; then
+  . $appdir/settings.sh
 else
-  echo "Missing $dir/settings.sh, exiting"
+  echo "Missing $appdir/settings.sh, exiting"
   exit 1
 fi
 
 if [ -z "$SPARK_HOME" ]; then
-  echo "Please set SPARK_HOME or put it in $dir/settings.sh first"
+  echo "Please set SPARK_HOME or put it in $appdir/settings.sh first"
   exit 1
 fi
 
