@@ -1,7 +1,6 @@
 package server
 
 import akka.actor.{Props, ActorSystem}
-import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 import server.domain.actors.ContextActor
 import utils.ActorUtils

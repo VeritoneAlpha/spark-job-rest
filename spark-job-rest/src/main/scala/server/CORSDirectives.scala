@@ -2,8 +2,6 @@ package server
 
 import spray.http._
 import spray.routing._
-import spray.http.HttpHeaders._
-import spray.http.HttpMethod
 /**
  * Created by emaorhian
  * Copy-pasted from https://github.com/Atigeo/jaws-spark-sql-rest/blob/01a1bd6579123ca4762ca00ac63cdb62e962125e/jaws-spark-sql-rest/src/main/scala/customs/CORSDirectives.scala

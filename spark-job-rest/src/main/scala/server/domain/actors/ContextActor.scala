@@ -1,6 +1,6 @@
 package server.domain.actors
 
-import akka.actor.{Actor, ActorLogging, Terminated}
+import akka.actor.{Actor, Terminated}
 import api.{SparkJobValid, SparkJobInvalid, SparkJob}
 import com.google.gson.Gson
 import com.typesafe.config.Config

@@ -1,6 +1,6 @@
 package server.domain.actors
 
-import java.io.{File}
+import java.io.File
 
 import akka.actor.{Actor, ActorLogging}
 import com.typesafe.config.Config

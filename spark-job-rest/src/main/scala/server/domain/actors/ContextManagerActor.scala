@@ -1,23 +1,20 @@
 package server.domain.actors
 
-import java.io.File
 import java.lang.ProcessBuilder.Redirect
 import java.util
 
-import akka.actor.{Actor, ActorLogging, ActorRef, ActorSelection}
+import akka.actor.{Actor, ActorRef, ActorSelection}
 import akka.pattern.ask
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.commons.lang.exception.ExceptionUtils
 import org.slf4j.LoggerFactory
 import server.domain.actors.ContextActor.{FailedInit, InitializeContext, Initialized}
 import server.domain.actors.ContextManagerActor._
-import server.domain.actors.JarActor.{ResultJarsPathForAll, GetJarsPathForAll, GetJarsPathForClasspath}
-import spray.http.StatusCodes
+import server.domain.actors.JarActor.{ResultJarsPathForAll, GetJarsPathForAll}
 import utils.ActorUtils
 
 import scala.collection.mutable.{HashMap, SynchronizedMap}
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 import scala.util.{Success, Failure}
 
