@@ -1,6 +1,5 @@
 package com.job
 
-import com.amazonaws.{AmazonClientException, AmazonServiceException}
 import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.services.s3.AmazonS3Client
 import com.amazonaws.services.s3.model.{GetObjectRequest, ObjectListing, ListObjectsRequest}
@@ -10,7 +9,7 @@ import org.apache.hadoop.io.IOUtils
 import org.slf4j.LoggerFactory
 
 import scala.collection.mutable.ListBuffer
-import scala.util.{Try}
+import scala.util.Try
 
 /**
  * Created by raduchilom on 4/18/15.
@@ -20,11 +19,6 @@ object S3Utils {
   val log = LoggerFactory.getLogger(getClass)
 
   def getFiles(bucketName: String, inputKey: String, accessKey: String, secretAccessKey: String):List[(Int, String)] = {
-
-    /*
-    A more scalaish approach
-    http://stackoverflow.com/questions/11036010/amazon-s3-java-api-only-downloads-50-objects
-     */
 
     val s3Client: AmazonS3Client = getS3Client(accessKey, secretAccessKey)
 
@@ -37,7 +31,7 @@ object S3Utils {
       val listObjectsRequest = new ListObjectsRequest()
         .withBucketName(bucketName)
         .withPrefix(inputKey)
-      var objectListing: ObjectListing = null
+       var objectListing: ObjectListing = null
 
       do {
         import scala.collection.JavaConversions._
@@ -54,28 +48,9 @@ object S3Utils {
       log.info("Finished listing objects from S3")
 
     } catch {
-
-      case ase: AmazonServiceException => {
-        log.error("Caught an AmazonServiceException, " +
-          "which means your request made it " +
-          "to Amazon S3, but was rejected with an error response " +
-          "for some reason.")
-        log.error("Error Message:    " + ase.getMessage())
-        log.error("HTTP Status Code: " + ase.getStatusCode())
-        log.error("AWS Error Code:   " + ase.getErrorCode())
-        log.error("Error Type:       " + ase.getErrorType())
-        log.error("Request ID:       " + ase.getRequestId())
-        log.error("", ase)
-      }
-
-      case ace: AmazonClientException => {
-        log.error("Caught an AmazonClientException, " +
-          "which means the client encountered " +
-          "an internal error while trying to communicate" +
-          " with S3, " +
-          "such as not being able to access the network.")
-        log.error("Error Message: " + ace.getMessage())
-        log.error("", ace)
+      case e: Exception => {
+        log.error("Failed listing files. ", e)
+        throw e
       }
     }
 
