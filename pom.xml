@@ -13,6 +13,7 @@
 	<modules>
 		<module>spark-job-rest-api</module>
 		<module>spark-job-rest</module>
+        <module>spark-job-rest-client</module>
 		<module>examples/example-job</module>
 		<module>examples/s3-download-job</module>
 	</modules>

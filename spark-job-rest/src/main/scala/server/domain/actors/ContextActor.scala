@@ -8,6 +8,7 @@ import org.apache.commons.lang.exception.ExceptionUtils
 import org.apache.spark.SparkContext
 import ContextManagerActor.{DeleteContext, IsAwake}
 import org.slf4j.LoggerFactory
+import server.{Jobs, Job}
 import server.domain.actors.JobActor._
 import server.domain.actors.ContextActor._
 import utils.ActorUtils
@@ -113,15 +114,22 @@ class ContextActor(localConfig: Config) extends Actor {
     }
 
     case JobStatusEnquiry(contextName, jobId) => {
-      sender ! jobStateMap.getOrElse(jobId, JobDoesNotExist())
+      val jobState = jobStateMap.getOrElse(jobId, JobDoesNotExist())
+      jobState match {
+        case x: JobRunSuccess => sender ! Job(jobId, name, "Finished", x.result)
+        case e: JobRunError => sender ! Job(jobId, name, "Error", e.errorMessage)
+        case x: JobStarted => sender ! Job(jobId, name, "Running", "")
+        case x: JobDoesNotExist => sender ! JobDoesNotExist
+      }
     }
 
     case GetAllJobsStatus() => {
-      sender ! jobStateMap.map {
-        case (id: String, x: JobRunSuccess) => (id, name, "Finished", x.result)
-        case (id: String, x: JobRunError) => (id, name, "Error", x.errorMessage)
-        case (id: String, x: JobStarted) => (id, name, "Running", "")
+     val jobsList = jobStateMap.map {
+        case (id: String, x: JobRunSuccess) => Job(id, name, "Finished", x.result)
+        case (id: String, e: JobRunError) => Job(id, name, "Error", e.errorMessage)
+        case (id: String, x: JobStarted) => Job(id, name, "Running", "")
       }.toList
+      sender ! jobsList
     }
 
     case x @ _ => {

@@ -8,6 +8,7 @@ import akka.pattern.ask
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.commons.lang.exception.ExceptionUtils
 import org.slf4j.LoggerFactory
+import server.{Contexts, Context}
 import server.domain.actors.ContextActor.{FailedInit, InitializeContext, Initialized}
 import server.domain.actors.ContextManagerActor._
 import server.domain.actors.JarActor.{ResultJarsPathForAll, GetJarsPathForAll}
@@ -132,7 +133,7 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef) extends Act
 
     case GetAllContextsForClient() => {
       log.info(s"Received GetAllContexts message.")
-      sender ! contextMap.values.map(contextInfo => (contextInfo.contextName, contextInfo.sparkUiPort))
+      sender ! Contexts(contextMap.values.map(contextInfo => Context(contextInfo.contextName, contextInfo.sparkUiPort)).toArray)
     }
 
     case GetAllContexts() => {

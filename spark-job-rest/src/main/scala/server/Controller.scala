@@ -17,9 +17,7 @@ import server.domain.actors.getValueFromConfig
 import scala.concurrent.ExecutionContext
 import scala.util.{Try, Failure, Success}
 import ExecutionContext.Implicits.global
-import JsonUtils._
 import spray.httpx.SprayJsonSupport.sprayJsonMarshaller
-import spray.json.DefaultJsonProtocol._
 
 /**
  * Created by raduc on 03/11/14.
@@ -84,8 +82,8 @@ import spray.json.DefaultJsonProtocol._
         "Spark Job Rest is up and running!"
       } ~ options {
         corsFilter(List("*"), HttpHeaders.`Access-Control-Allow-Methods`(Seq(HttpMethods.OPTIONS, HttpMethods.GET))) {
-          complete {
-            "OK"
+          respondWithMediaType(MediaTypes.`application/json`) { ctx =>
+            ctx.complete(StatusCodes.OK)
           }
         }
       }
@@ -99,9 +97,9 @@ import spray.json.DefaultJsonProtocol._
         respondWithMediaType(MediaTypes.`application/json`) { ctx =>
           val resultFuture = jobManagerActor ? GetAllJobsStatus()
           resultFuture.map {
-            case x: List[Any] => ctx.complete(StatusCodes.OK, x)
-            case e: Throwable => ctx.complete(StatusCodes.InternalServerError, e.getMessage)
-            case x: String => ctx.complete(StatusCodes.InternalServerError, x)
+            case jobs: Jobs => ctx.complete(StatusCodes.OK, jobs)
+            case e: Throwable => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
+            case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
           }
         }
       }
@@ -113,13 +111,11 @@ import spray.json.DefaultJsonProtocol._
             respondWithMediaType(MediaTypes.`application/json`) { ctx =>
               val resultFuture = jobManagerActor ? JobStatusEnquiry(contextName, jobId)
               resultFuture.map {
-                case x: JobRunSuccess => ctx.complete(StatusCodes.OK, resultToTable("Finished", x.result))
-                case x: JobRunError => ctx.complete(StatusCodes.InternalServerError, resultToTable("Error", x.errorMessage))
-                case x: JobStarted => ctx.complete(StatusCodes.OK, resultToTable("Running", ""))
-                case x: JobDoesNotExist => ctx.complete(StatusCodes.BadRequest, "JobId does not exist!")
-                case NoSuchContext => ctx.complete(StatusCodes.BadRequest, "Context does not exist!")
-                case e: Throwable => ctx.complete(StatusCodes.InternalServerError, e.getMessage)
-                case x: String => ctx.complete(StatusCodes.InternalServerError, x)
+                case job:Job => ctx.complete(StatusCodes.OK, job)
+                case JobDoesNotExist() => ctx.complete(StatusCodes.BadRequest, ErrorResponse("JobId does not exist!"))
+                case NoSuchContext => ctx.complete(StatusCodes.BadRequest, ErrorResponse("Context does not exist!"))
+                case e: Throwable => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
+                case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
               }
             }
           }
@@ -138,11 +134,12 @@ import spray.json.DefaultJsonProtocol._
                   val resultFuture = jobManagerActor ? RunJob(runningClass, context, requestConfig)
                   resultFuture.map {
                     case x: String => ctx.complete(StatusCodes.OK, x)
-                    case e: Error => ctx.complete(StatusCodes.InternalServerError, e.getMessage)
-                    case NoSuchContext => ctx.complete(StatusCodes.BadRequest, "No such context.")
+                    case NoSuchContext => ctx.complete(StatusCodes.BadRequest, ErrorResponse("No such context."))
+                    case e: Exception => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
+                    case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
                   }
                 }
-                case Failure(e) => ctx.complete(StatusCodes.BadRequest, "Invalid parameter: " + e.getMessage)
+                case Failure(e) => ctx.complete(StatusCodes.BadRequest, ErrorResponse("Invalid parameter: " + e.getMessage))
               }
             }
           }
@@ -171,12 +168,13 @@ import spray.json.DefaultJsonProtocol._
                   val resultFuture = contextManagerActor ? CreateContext(contextName, getValueFromConfig(requestConfig, "jars", ""), requestConfig)
                   resultFuture.map {
                     case ContextInitialized(sparkUiPort) => ctx.complete(StatusCodes.OK, sparkUiPort)
-                    case e: FailedInit => ctx.complete(StatusCodes.InternalServerError, "Failed Init: " + e.message)
-                    case ContextAlreadyExists => ctx.complete(StatusCodes.BadRequest, "Context already exists.")
-                    case e: Throwable => ctx.complete(StatusCodes.InternalServerError, e.getMessage)
+                    case e: FailedInit => ctx.complete(StatusCodes.InternalServerError, ErrorResponse("Failed Init: " + e.message))
+                    case ContextAlreadyExists => ctx.complete(StatusCodes.BadRequest, ErrorResponse("Context already exists."))
+                    case e: Throwable => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
+                    case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
                   }
                 }
-                case Failure(e) => ctx.complete(StatusCodes.BadRequest, "Invalid parameters: " + e.getMessage)
+                case Failure(e) => ctx.complete(StatusCodes.BadRequest, ErrorResponse("Invalid parameters: " + e.getMessage))
               }
 
 
@@ -191,8 +189,9 @@ import spray.json.DefaultJsonProtocol._
           val resultFuture = contextManagerActor ? GetContext(contextName)
           respondWithMediaType(MediaTypes.`application/json`) { ctx =>
             resultFuture.map {
-              case NoSuchContext => ctx.complete(StatusCodes.BadRequest, "No such context.")
-              case x: ActorSelection => ctx.complete(StatusCodes.OK, "Context exists.")
+              case NoSuchContext => ctx.complete(StatusCodes.BadRequest, ErrorResponse("No such context."))
+              case actorS: ActorSelection => ctx.complete(StatusCodes.OK, ErrorResponse("Context exists."))
+              case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
             }
           }
         }
@@ -203,8 +202,9 @@ import spray.json.DefaultJsonProtocol._
         respondWithMediaType(MediaTypes.`application/json`) { ctx =>
           val resultFuture = contextManagerActor ? GetAllContextsForClient()
           resultFuture.map {
-            case s: List[Any] => ctx.complete(StatusCodes.OK, s)
-            case e: Any => ctx.complete(StatusCodes.InternalServerError, e.toString)
+            case contexts: Contexts => ctx.complete(StatusCodes.OK, contexts)
+            case e: Exception => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
+            case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
           }
         }
       }
@@ -215,8 +215,9 @@ import spray.json.DefaultJsonProtocol._
           val resultFuture = contextManagerActor ? DeleteContext(contextName)
           respondWithMediaType(MediaTypes.`application/json`) { ctx =>
             resultFuture.map {
-              case NoSuchContext => ctx.complete(StatusCodes.BadRequest, "No such context.")
-              case Success => ctx.complete(StatusCodes.OK, "Context deleted.")
+              case Success => ctx.complete(StatusCodes.OK, SimpleMessage("Context deleted."))
+              case NoSuchContext => ctx.complete(StatusCodes.BadRequest, ErrorResponse("No such context."))
+              case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
             }
           }
         }
@@ -239,8 +240,9 @@ import spray.json.DefaultJsonProtocol._
             val resultFuture = jarActor ? AddJar(jarName, jarBytes)
             respondWithMediaType(MediaTypes.`application/json`) { ctx =>
               resultFuture.map {
-                case Failure(e) => ctx.complete(StatusCodes.InternalServerError, e.getMessage)
-                case Success(message: String) => ctx.complete(StatusCodes.OK, message)
+                case Success(message: String) => ctx.complete(StatusCodes.OK, SimpleMessage(message))
+                case Failure(e) => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
+                case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
               }
             }
           }
@@ -253,9 +255,10 @@ import spray.json.DefaultJsonProtocol._
           val resultFuture = jarActor ? DeleteJar(jarName)
           respondWithMediaType(MediaTypes.`application/json`) { ctx =>
             resultFuture.map {
-              case NoSuchJar() => ctx.complete(StatusCodes.BadRequest, "No such jar.")
-              case Success(message: String) => ctx.complete(StatusCodes.OK, message)
-              case e: Throwable => ctx.complete(StatusCodes.InternalServerError, e.getMessage)
+              case Success(message: String) => ctx.complete(StatusCodes.OK, SimpleMessage(message))
+              case NoSuchJar() => ctx.complete(StatusCodes.BadRequest,ErrorResponse("No such jar."))
+              case e: Throwable => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
+              case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
             }
           }
         }
@@ -266,9 +269,9 @@ import spray.json.DefaultJsonProtocol._
         respondWithMediaType(MediaTypes.`application/json`) { ctx =>
           val future = jarActor ? GetAllJars()
           future.map {
-            case list: List[Any] => {
-              ctx.complete(StatusCodes.OK, list)
-            }
+            case jarsInfo: JarsInfo => ctx.complete(StatusCodes.OK, jarsInfo)
+            case e: Throwable => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
+            case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
           }
         }
       }
@@ -281,7 +284,4 @@ import spray.json.DefaultJsonProtocol._
     }
   }
 
-  def resultToTable(state: String, result: Any): Map[String, Any] = {
-    Map(StateKey -> state, ResultKey -> result)
-  }
 }

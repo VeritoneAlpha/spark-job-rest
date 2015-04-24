@@ -5,6 +5,7 @@ import java.util.UUID
 import akka.actor.{Actor, ActorRef, ActorSelection}
 import akka.pattern.ask
 import com.typesafe.config.Config
+import server.{Jobs, Job}
 import server.domain.actors.ContextManagerActor.{GetAllContexts, GetContext, NoSuchContext}
 import org.slf4j.LoggerFactory
 import server.domain.actors.JobActor._
@@ -118,22 +119,22 @@ class JobActor(config: Config, contextManagerActor: ActorRef) extends Actor {
       val webApi = sender
       val future = contextManagerActor ? GetAllContexts()
 
-      val future2: Future[Future[List[List[Any]]]] = future map {
+      val future2: Future[Future[List[List[Job]]]] = future map {
         case contexts: List[ActorSelection] => {
           val contextsList = contexts.map { context =>
             val oneContextFuture = context ? GetAllJobsStatus()
             oneContextFuture.map{
-              case jobs: List[Any] => jobs
+              case jobs: List[Job] => jobs
             }
           }
           Future.sequence(contextsList)
         }
       }
-      val future3: Future[List[List[Any]]] = future2.flatMap(identity)
-      val future4: Future[List[Any]] = future3.map(x => x.flatMap(identity))
+      val future3: Future[List[List[Job]]] = future2.flatMap(identity)
+      val future4: Future[List[Job]] = future3.map(x => x.flatMap(identity))
 
       future4 onComplete {
-        case Success(s) => webApi ! s
+        case Success(jobsList:List[Job]) => webApi ! Jobs(jobsList.toArray)
         case Failure(e) => webApi ! e
       }
 

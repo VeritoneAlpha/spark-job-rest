@@ -4,6 +4,7 @@ import java.io.File
 
 import akka.actor.{Actor, ActorLogging}
 import com.typesafe.config.Config
+import server.{JarsInfo, JarInfo}
 import server.domain.actors.JarActor._
 import utils.{FileUtils, JarUtils}
 import scala.collection.mutable.ListBuffer
@@ -26,7 +27,7 @@ object JarActor {
   case class CreateJarFolder(overwrite: Boolean)
   case class JarFolderExists()
   case class ResultJarsPathForAll(pathForClasspath: String, pathForSpark: List[String])
-  case class JarInfo(name: String, size: Long, timestamp: Long)
+
 
 
   val CLASSPATH_JAR_SEPARATOR = ":"
@@ -67,7 +68,7 @@ class JarActor(config: Config) extends Actor with ActorLogging{
       val folderJar = new File(jarFolder)
       val files = folderJar.listFiles()
       if(files != null){
-        val jarInfos = files.map(jarFile => JarInfo(jarFile.getName, jarFile.length, jarFile.lastModified)).filter(_.name.endsWith(".jar")).toList
+        val jarInfos = JarsInfo(files.map(jarFile => JarInfo(jarFile.getName, jarFile.length, jarFile.lastModified)).filter(_.name.endsWith(".jar")))
         sender ! jarInfos
       } else {
         sender ! List()

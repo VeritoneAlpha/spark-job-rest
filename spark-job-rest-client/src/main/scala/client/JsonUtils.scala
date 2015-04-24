@@ -1,8 +1,7 @@
-package server
+package client
 
 import spray.json._
 import spray.json.DefaultJsonProtocol._
-
 
 /**
  * This class si cloned from https://github.com/spark-jobserver/spark-jobserver
