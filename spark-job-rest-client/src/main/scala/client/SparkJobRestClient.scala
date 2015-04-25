@@ -35,6 +35,7 @@ class SparkJobRestClient(serverAddress: String)(implicit system: ActorSystem) {
 
 
 //  ============  Contexts Route  ============
+  @throws(classOf[Exception])
   def getContexts() : Contexts = {
 
     val pipeline: HttpRequest => Future[Contexts] = sendReceive ~> unmarshal[Contexts]
@@ -56,6 +57,7 @@ class SparkJobRestClient(serverAddress: String)(implicit system: ActorSystem) {
     null
   }
 
+  @throws(classOf[Exception])
   def getContext() : Context = {
 
     val pipeline: HttpRequest => Future[Context] = sendReceive ~> unmarshal[Context]
@@ -81,6 +83,7 @@ class SparkJobRestClient(serverAddress: String)(implicit system: ActorSystem) {
     null
   }
 
+  @throws(classOf[Exception])
   def checkIfContextExists(contextName: String) : Boolean = {
 
     val pipeline: HttpRequest => Future[Context] = sendReceive ~> unmarshal[Context]
@@ -106,6 +109,7 @@ class SparkJobRestClient(serverAddress: String)(implicit system: ActorSystem) {
     false
   }
 
+  @throws(classOf[Exception])
   def deleteContext(contextName: String) : Boolean = {
 
     val pipeline: HttpRequest => Future[SimpleMessage] = sendReceive ~> unmarshal[SimpleMessage]
@@ -131,6 +135,7 @@ class SparkJobRestClient(serverAddress: String)(implicit system: ActorSystem) {
     false
   }
 
+  @throws(classOf[Exception])
   def createContext(contextName: String, parameters: Map[String, String]) : Context = {
 
     val body = createParametersString(parameters)
@@ -159,27 +164,29 @@ class SparkJobRestClient(serverAddress: String)(implicit system: ActorSystem) {
   }
 
 //  ============  Jobs Route  ============
-def getJobs() : Jobs = {
+  @throws(classOf[Exception])
+  def getJobs() : Jobs = {
 
-  val pipeline: HttpRequest => Future[Jobs] = sendReceive ~> unmarshal[Jobs]
+    val pipeline: HttpRequest => Future[Jobs] = sendReceive ~> unmarshal[Jobs]
 
-  val response: Future[Jobs] = pipeline(Get(serverAddress + jobsRoute))
+    val response: Future[Jobs] = pipeline(Get(serverAddress + jobsRoute))
 
-  Await.ready(response, Duration.create(30, TimeUnit.SECONDS)).value.get match {
+    Await.ready(response, Duration.create(30, TimeUnit.SECONDS)).value.get match {
 
-    case Success(jobs: Jobs) => {
-      return jobs
+      case Success(jobs: Jobs) => {
+        return jobs
+      }
+      case Failure(e) => {
+        log.error("Failed request: ", e)
+        throw e
+      }
+
     }
-    case Failure(e) => {
-      log.error("Failed request: ", e)
-      throw e
-    }
 
+    null
   }
 
-  null
-}
-
+  @throws(classOf[Exception])
   def getJob(jobId: String, contextName: String) : Job = {
 
     val pipeline: HttpRequest => Future[Job] = sendReceive ~> unmarshal[Job]
@@ -205,6 +212,7 @@ def getJobs() : Jobs = {
     null
   }
 
+  @throws(classOf[Exception])
   def runJob(runningClass: String, contextName: String, parameters: Map[String, String]) : Job = {
 
     val body = createParametersString(parameters)
@@ -233,6 +241,7 @@ def getJobs() : Jobs = {
   }
 
   //  ============  Jars Route  ============
+  @throws(classOf[Exception])
   def getJars() : JarsInfo = {
 
     val pipeline: HttpRequest => Future[JarsInfo] = sendReceive ~> unmarshal[JarsInfo]
@@ -254,6 +263,7 @@ def getJobs() : Jobs = {
     null
   }
 
+  @throws(classOf[Exception])
   def deleteJar(jarName: String) : Boolean = {
 
     val pipeline: HttpRequest => Future[SimpleMessage] = sendReceive ~> unmarshal[SimpleMessage]
@@ -279,6 +289,7 @@ def getJobs() : Jobs = {
     false
   }
 
+  @throws(classOf[Exception])
   def createParametersString(parameters: Map[String, String]): String = {
       parameters.foldLeft("") { case (acc, (key, value)) => {
         acc + key + "=" + value + "\n"
