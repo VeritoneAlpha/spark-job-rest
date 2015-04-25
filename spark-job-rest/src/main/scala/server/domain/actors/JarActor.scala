@@ -4,6 +4,7 @@ import java.io.File
 
 import akka.actor.{Actor, ActorLogging}
 import com.typesafe.config.Config
+import org.slf4j.LoggerFactory
 import responses.{JarsInfo, JarInfo}
 import server.domain.actors.JarActor._
 import utils.{FileUtils, JarUtils}
@@ -36,17 +37,19 @@ object JarActor {
 
 }
 
-class JarActor(config: Config) extends Actor with ActorLogging{
+class JarActor(config: Config) extends Actor {
+
+  val log = LoggerFactory.getLogger(getClass)
 
   val jarFolder = getValueFromConfig(config, JAR_FOLDER_PROPERTY_PATH, "")
   FileUtils.createFolder(jarFolder, false)
 
   override def receive: Receive = {
     case AddJar(jarName, bytes) => {
-      println(s"Received AddJar request for jar $jarName")
+      log.info(s"Received AddJar request for jar $jarName")
       Try {
         if(!JarUtils.validateJar(bytes)){
-          println("Jar " + jarName + " is not valid!")
+          log.error("Jar " + jarName + " is not valid!")
           throw new Exception("Jar " + jarName + " is not valid!")
         }
         FileUtils.writeToFile(jarName, jarFolder, bytes)

@@ -50,7 +50,8 @@ import spray.httpx.SprayJsonSupport.sprayJsonMarshaller
       get {
         getFromResource("webapp/1.html")
       }
-    }~ options {
+    } ~
+    options {
       corsFilter(List("*"), HttpHeaders.`Access-Control-Allow-Methods`(Seq(HttpMethods.OPTIONS, HttpMethods.GET))) {
         complete {
           "OK"
@@ -251,6 +252,22 @@ import spray.httpx.SprayJsonSupport.sprayJsonMarshaller
                 case Success(message: String) => ctx.complete(StatusCodes.OK, SimpleMessage(message))
                 case Failure(e) => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
                 case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
+              }
+            }
+          }
+        }
+      } ~
+      pathEnd {
+        entity(as[MultipartFormData]) { formData =>
+          respondWithMediaType(MediaTypes.`application/json`) { ctx =>
+            formData.fields.foreach {
+              case bodyPart:BodyPart => {
+                val resultFuture = jarActor ? AddJar(bodyPart.name.get, bodyPart.entity.data.toByteArray)
+                resultFuture.map {
+                  case Success(message: String) => ctx.complete(StatusCodes.OK, SimpleMessage(message))
+                  case Failure(e) => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
+                  case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
+                }
               }
             }
           }

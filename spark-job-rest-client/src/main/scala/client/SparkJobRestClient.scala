@@ -1,5 +1,6 @@
 package client
 
+import java.io.File
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorSystem}
@@ -290,6 +291,33 @@ class SparkJobRestClient(serverAddress: String)(implicit system: ActorSystem) {
   }
 
   @throws(classOf[Exception])
+  def uploadJar(jarName: String, jarPath: String) : Boolean = {
+
+    val pipeline: HttpRequest => Future[SimpleMessage] = sendReceive ~> unmarshal[SimpleMessage]
+
+    val body = MultipartFormData(Seq(BodyPart(new File(jarPath), jarName, MediaTypes.`application/java-archive`)))
+
+    val response: Future[SimpleMessage] = pipeline(Post(serverAddress + jarsRoute , body))
+
+    Await.ready(response, Duration.create(30, TimeUnit.SECONDS)).value.get match {
+
+      case Success(simpleMessage: SimpleMessage) => {
+        return true
+      }
+      case Failure(e: UnsuccessfulResponseException) => {
+        log.error("Unsuccessful response: ", e)
+        throw e
+      }
+      case Failure(e: Throwable) => {
+        log.error("Unsuccessful request: ", e)
+        throw e
+      }
+
+    }
+
+    false
+  }
+
   def createParametersString(parameters: Map[String, String]): String = {
       parameters.foldLeft("") { case (acc, (key, value)) => {
         acc + key + "=" + value + "\n"
