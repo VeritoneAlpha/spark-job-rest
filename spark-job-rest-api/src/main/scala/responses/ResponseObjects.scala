@@ -1,7 +1,6 @@
-package server
+package responses
 
 import spray.json.DefaultJsonProtocol._
-
 
 /**
  * Created by raduc on 24/04/15.
@@ -37,7 +36,7 @@ import spray.json.DefaultJsonProtocol._
     implicit val logJson = jsonFormat3(apply)
   }
 
-  case class JarsInfo(jarsInfo: Array[JarInfo])
+  case class JarsInfo(jars: Array[JarInfo])
 
   object JarsInfo {
     implicit val logJson = jsonFormat1(apply)
@@ -49,7 +48,7 @@ import spray.json.DefaultJsonProtocol._
     implicit val logJson = jsonFormat1(apply)
   }
 
-  case class SimpleMessage(status: String)
+  case class SimpleMessage(message: String)
 
   object SimpleMessage {
     implicit val logJson = jsonFormat1(apply)

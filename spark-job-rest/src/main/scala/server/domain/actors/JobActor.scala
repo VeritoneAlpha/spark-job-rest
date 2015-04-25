@@ -5,7 +5,7 @@ import java.util.UUID
 import akka.actor.{Actor, ActorRef, ActorSelection}
 import akka.pattern.ask
 import com.typesafe.config.Config
-import server.{Jobs, Job}
+import responses.{Jobs, Job}
 import server.domain.actors.ContextManagerActor.{GetAllContexts, GetContext, NoSuchContext}
 import org.slf4j.LoggerFactory
 import server.domain.actors.JobActor._
@@ -55,7 +55,7 @@ class JobActor(config: Config, contextManagerActor: ActorRef) extends Actor {
       future onSuccess {
         case contextRef: ActorSelection => {
 
-          fromWebApi ! job.uuid
+          fromWebApi ! Job(job.uuid, job.contextName, "Running", "")
 
           log.info(s"Sending RunJob message to actor $contextRef")
           contextRef ! job

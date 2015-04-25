@@ -4,6 +4,7 @@ import akka.actor.{ActorSelection, ActorSystem, ActorRef}
 import akka.util.Timeout
 import com.typesafe.config.{Config, ConfigFactory}
 import org.slf4j.LoggerFactory
+import responses._
 import server.domain.actors.JarActor._
 import server.domain.actors.{JobActor, ContextManagerActor, ContextActor}
 import ContextActor.{FailedInit}
@@ -45,9 +46,11 @@ import spray.httpx.SprayJsonSupport.sprayJsonMarshaller
   log.info("Started web service.")
 
   def indexRoute: Route = pathPrefix("index"){
-    get {
-      getFromResource("webapp/1.html")
-    } ~ options {
+    pathEnd {
+      get {
+        getFromResource("webapp/1.html")
+      }
+    }~ options {
       corsFilter(List("*"), HttpHeaders.`Access-Control-Allow-Methods`(Seq(HttpMethods.OPTIONS, HttpMethods.GET))) {
         complete {
           "OK"
@@ -76,7 +79,8 @@ import spray.httpx.SprayJsonSupport.sprayJsonMarshaller
         }
       }
     }
-  } ~ path("hearbeat") {
+  } ~
+  path("hearbeat") {
     get {
       complete {
         "Spark Job Rest is up and running!"
@@ -92,14 +96,16 @@ import spray.httpx.SprayJsonSupport.sprayJsonMarshaller
 
 
   def jobRoute: Route = pathPrefix("jobs"){
-    get {
-      corsFilter(List("*")) {
-        respondWithMediaType(MediaTypes.`application/json`) { ctx =>
-          val resultFuture = jobManagerActor ? GetAllJobsStatus()
-          resultFuture.map {
-            case jobs: Jobs => ctx.complete(StatusCodes.OK, jobs)
-            case e: Throwable => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
-            case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
+    pathEnd {
+      get {
+        corsFilter(List("*")) {
+          respondWithMediaType(MediaTypes.`application/json`) { ctx =>
+            val resultFuture = jobManagerActor ? GetAllJobsStatus()
+            resultFuture.map {
+              case jobs: Jobs => ctx.complete(StatusCodes.OK, jobs)
+              case e: Throwable => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
+              case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
+            }
           }
         }
       }
@@ -123,7 +129,7 @@ import spray.httpx.SprayJsonSupport.sprayJsonMarshaller
       }
     } ~
     post {
-      parameters('runningClass, 'context) { (runningClass, context) =>
+      parameters('runningClass, 'contextName) { (runningClass, context) =>
         entity(as[String]) { configString =>
           corsFilter(List("*")) {
             respondWithMediaType(MediaTypes.`application/json`) { ctx =>
@@ -133,7 +139,7 @@ import spray.httpx.SprayJsonSupport.sprayJsonMarshaller
                 case Success(requestConfig) => {
                   val resultFuture = jobManagerActor ? RunJob(runningClass, context, requestConfig)
                   resultFuture.map {
-                    case x: String => ctx.complete(StatusCodes.OK, x)
+                    case job: Job => ctx.complete(StatusCodes.OK, job)
                     case NoSuchContext => ctx.complete(StatusCodes.BadRequest, ErrorResponse("No such context."))
                     case e: Exception => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
                     case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
@@ -147,7 +153,7 @@ import spray.httpx.SprayJsonSupport.sprayJsonMarshaller
       }
     } ~
       options {
-        corsFilter(List("*"), HttpHeaders.`Access-Control-Allow-Methods`(Seq(HttpMethods.OPTIONS, HttpMethods.GET, HttpMethods.POST, HttpMethods.DELETE))) {
+        corsFilter(List("*"), HttpHeaders.`Access-Control-Allow-Methods`(Seq(HttpMethods.OPTIONS, HttpMethods.GET, HttpMethods.POST))) {
           complete {
             "OK"
           }
@@ -167,7 +173,7 @@ import spray.httpx.SprayJsonSupport.sprayJsonMarshaller
                 case Success(requestConfig) => {
                   val resultFuture = contextManagerActor ? CreateContext(contextName, getValueFromConfig(requestConfig, "jars", ""), requestConfig)
                   resultFuture.map {
-                    case ContextInitialized(sparkUiPort) => ctx.complete(StatusCodes.OK, sparkUiPort)
+                    case context:Context => ctx.complete(StatusCodes.OK, context)
                     case e: FailedInit => ctx.complete(StatusCodes.InternalServerError, ErrorResponse("Failed Init: " + e.message))
                     case ContextAlreadyExists => ctx.complete(StatusCodes.BadRequest, ErrorResponse("Context already exists."))
                     case e: Throwable => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
@@ -186,25 +192,27 @@ import spray.httpx.SprayJsonSupport.sprayJsonMarshaller
     get {
       path(Segment) { contextName =>
         corsFilter(List("*")) {
-          val resultFuture = contextManagerActor ? GetContext(contextName)
+          val resultFuture = contextManagerActor ? GetContextInfo(contextName)
           respondWithMediaType(MediaTypes.`application/json`) { ctx =>
             resultFuture.map {
+              case context: Context => ctx.complete(StatusCodes.OK, context)
               case NoSuchContext => ctx.complete(StatusCodes.BadRequest, ErrorResponse("No such context."))
-              case actorS: ActorSelection => ctx.complete(StatusCodes.OK, ErrorResponse("Context exists."))
               case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
             }
           }
         }
       }
     } ~
-    get {
-      corsFilter(List("*")) {
-        respondWithMediaType(MediaTypes.`application/json`) { ctx =>
-          val resultFuture = contextManagerActor ? GetAllContextsForClient()
-          resultFuture.map {
-            case contexts: Contexts => ctx.complete(StatusCodes.OK, contexts)
-            case e: Exception => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
-            case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
+    pathEnd {
+      get {
+        corsFilter(List("*")) {
+          respondWithMediaType(MediaTypes.`application/json`) { ctx =>
+            val resultFuture = contextManagerActor ? GetAllContextsForClient()
+            resultFuture.map {
+              case contexts: Contexts => ctx.complete(StatusCodes.OK, contexts)
+              case e: Exception => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
+              case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
+            }
           }
         }
       }
@@ -264,14 +272,16 @@ import spray.httpx.SprayJsonSupport.sprayJsonMarshaller
         }
       }
     } ~
-    get {
-      corsFilter(List("*")) {
-        respondWithMediaType(MediaTypes.`application/json`) { ctx =>
-          val future = jarActor ? GetAllJars()
-          future.map {
-            case jarsInfo: JarsInfo => ctx.complete(StatusCodes.OK, jarsInfo)
-            case e: Throwable => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
-            case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
+    pathEnd {
+      get {
+        corsFilter(List("*")) {
+          respondWithMediaType(MediaTypes.`application/json`) { ctx =>
+            val future = jarActor ? GetAllJars()
+            future.map {
+              case jarsInfo: JarsInfo => ctx.complete(StatusCodes.OK, jarsInfo)
+              case e: Throwable => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
+              case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
+            }
           }
         }
       }

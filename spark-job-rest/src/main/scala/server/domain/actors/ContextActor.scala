@@ -8,7 +8,7 @@ import org.apache.commons.lang.exception.ExceptionUtils
 import org.apache.spark.SparkContext
 import ContextManagerActor.{DeleteContext, IsAwake}
 import org.slf4j.LoggerFactory
-import server.{Jobs, Job}
+import responses.Job
 import server.domain.actors.JobActor._
 import server.domain.actors.ContextActor._
 import utils.ActorUtils

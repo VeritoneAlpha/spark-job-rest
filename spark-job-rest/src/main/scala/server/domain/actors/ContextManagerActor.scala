@@ -8,7 +8,7 @@ import akka.pattern.ask
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.commons.lang.exception.ExceptionUtils
 import org.slf4j.LoggerFactory
-import server.{Contexts, Context}
+import responses.{Contexts, Context}
 import server.domain.actors.ContextActor.{FailedInit, InitializeContext, Initialized}
 import server.domain.actors.ContextManagerActor._
 import server.domain.actors.JarActor.{ResultJarsPathForAll, GetJarsPathForAll}
@@ -30,6 +30,7 @@ object ContextManagerActor {
   case class ContextInitialized(port: String)
   case class DeleteContext(contextName: String)
   case class GetContext(contextName: String)
+  case class GetContextInfo(contextName: String)
   case class GetAllContextsForClient()
   case class GetAllContexts()
   case class NoSuchContext()
@@ -131,6 +132,15 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef) extends Act
       }
     }
 
+    case GetContextInfo(contextName) => {
+      log.info(s"Received GetContext message : context=$contextName")
+      if (contextMap contains contextName) {
+        sender ! Context(contextName, contextMap(contextName).sparkUiPort)
+      } else {
+        sender ! NoSuchContext
+      }
+    }
+
     case GetAllContextsForClient() => {
       log.info(s"Received GetAllContexts message.")
       sender ! Contexts(contextMap.values.map(contextInfo => Context(contextInfo.contextName, contextInfo.sparkUiPort)).toArray)
@@ -162,7 +172,7 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef) extends Act
               value match {
                 case Initialized => {
                   contextMap += contextName -> ContextInfo(contextName, sparkUiPort, actorRef)
-                  sender ! ContextInitialized(sparkUiPort)
+                  sender ! Context(contextName, sparkUiPort)
                 }
                 case e:FailedInit => {
                   log.error(s"Init failed for context $contextName", e);
