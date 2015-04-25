@@ -55,7 +55,8 @@ class JobActor(config: Config, contextManagerActor: ActorRef) extends Actor {
       future onSuccess {
         case contextRef: ActorSelection => {
 
-          fromWebApi ! Job(job.uuid, job.contextName, "Running", "")
+          import server.JobStates.RUNNING
+          fromWebApi ! Job(job.uuid, job.contextName, RUNNING.toString, "")
 
           log.info(s"Sending RunJob message to actor $contextRef")
           contextRef ! job

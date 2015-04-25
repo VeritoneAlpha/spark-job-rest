@@ -115,19 +115,21 @@ class ContextActor(localConfig: Config) extends Actor {
 
     case JobStatusEnquiry(contextName, jobId) => {
       val jobState = jobStateMap.getOrElse(jobId, JobDoesNotExist())
+      import server.JobStates._
       jobState match {
-        case x: JobRunSuccess => sender ! Job(jobId, name, "Finished", x.result)
-        case e: JobRunError => sender ! Job(jobId, name, "Error", e.errorMessage)
-        case x: JobStarted => sender ! Job(jobId, name, "Running", "")
+        case x: JobRunSuccess => sender ! Job(jobId, name, FINISHED.toString, x.result)
+        case e: JobRunError => sender ! Job(jobId, name, ERROR.toString, e.errorMessage)
+        case x: JobStarted => sender ! Job(jobId, name, RUNNING.toString, "")
         case x: JobDoesNotExist => sender ! JobDoesNotExist
       }
     }
 
     case GetAllJobsStatus() => {
+     import server.JobStates._
      val jobsList = jobStateMap.map {
-        case (id: String, x: JobRunSuccess) => Job(id, name, "Finished", x.result)
-        case (id: String, e: JobRunError) => Job(id, name, "Error", e.errorMessage)
-        case (id: String, x: JobStarted) => Job(id, name, "Running", "")
+        case (id: String, x: JobRunSuccess) => Job(id, name, FINISHED.toString, x.result)
+        case (id: String, e: JobRunError) => Job(id, name, ERROR.toString, e.errorMessage)
+        case (id: String, x: JobStarted) => Job(id, name, RUNNING.toString, "")
       }.toList
       sender ! jobsList
     }
