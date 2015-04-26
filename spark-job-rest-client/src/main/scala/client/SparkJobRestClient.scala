@@ -325,22 +325,3 @@ class SparkJobRestClient(serverAddress: String)(implicit system: ActorSystem) {
     }
   }
 }
-
-//object ab extends App {
-//  implicit val system = ActorSystem()
-//
-//  val sjrc = new SparkJobRestClient("http://localhost:8097")
-////  sjrc.getContexts().contexts.foreach(println)
-////  sjrc.checkIfContextExists("testContext")
-////  sjrc.deleteContext("testContext")
-////  println(sjrc.createContext("testContext3", Map("jars" -> "/Users/raduchilom/projects/spark-job-rest/examples/example-job/target/example-job.jar")))
-//
-////  val job = sjrc.runJob("com.job.SparkJobImplemented", "testContext1", Map("input" -> "10"))
-////  println(job)
-////  sjrc.getJobs().jobs.foreach(println)
-////  println(sjrc.getJob(job.jobId, job.contextName))
-//
-//
-//
-//  system.shutdown()
-//}

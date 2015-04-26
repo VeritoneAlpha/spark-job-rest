@@ -18,10 +18,10 @@ import spray.json.DefaultJsonProtocol._
     implicit val logJson = jsonFormat1(apply)
   }
 
-  case class Job(jobId: String, contextName: String, status: String, result: String)
+  case class Job(jobId: String, contextName: String, status: String, result: String, startTime: Long)
 
   object Job {
-    implicit val logJson = jsonFormat4(apply)
+    implicit val logJson = jsonFormat5(apply)
   }
 
   case class Jobs(jobs: Array[Job])

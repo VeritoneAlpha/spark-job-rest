@@ -5,6 +5,7 @@ import java.util.UUID
 import akka.actor.{Actor, ActorRef, ActorSelection}
 import akka.pattern.ask
 import com.typesafe.config.Config
+import org.joda.time.{DateTimeZone, DateTime}
 import responses.{Jobs, Job}
 import server.domain.actors.ContextManagerActor.{GetAllContexts, GetContext, NoSuchContext}
 import org.slf4j.LoggerFactory
@@ -20,7 +21,9 @@ import scala.util.{Success, Failure}
 
 object JobActor {
 
-  trait JobStatus
+  trait JobStatus {
+    val startTime: Long = new DateTime  (DateTimeZone.UTC).getMillis
+  }
 
   case class JobStatusEnquiry(contextName: String, jobId: String)
 
@@ -56,7 +59,7 @@ class JobActor(config: Config, contextManagerActor: ActorRef) extends Actor {
         case contextRef: ActorSelection => {
 
           import server.JobStates.RUNNING
-          fromWebApi ! Job(job.uuid, job.contextName, RUNNING.toString, "")
+          fromWebApi ! Job(job.uuid, job.contextName, RUNNING.toString, "", DateTime.now(DateTimeZone.UTC).getMillis)
 
           log.info(s"Sending RunJob message to actor $contextRef")
           contextRef ! job
@@ -135,7 +138,9 @@ class JobActor(config: Config, contextManagerActor: ActorRef) extends Actor {
       val future4: Future[List[Job]] = future3.map(x => x.flatMap(identity))
 
       future4 onComplete {
-        case Success(jobsList:List[Job]) => webApi ! Jobs(jobsList.toArray)
+        case Success(jobsList:List[Job]) => {
+          webApi ! Jobs(jobsList.toArray.sortWith(_.startTime > _.startTime))
+        }
         case Failure(e) => webApi ! e
       }
 

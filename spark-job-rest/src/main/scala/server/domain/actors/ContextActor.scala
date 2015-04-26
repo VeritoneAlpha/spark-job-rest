@@ -1,13 +1,12 @@
 package server.domain.actors
 
-import akka.actor.{Actor, Terminated}
+import akka.actor.{ActorLogging, Actor, Terminated}
 import api.{SparkJobValid, SparkJobInvalid, SparkJob}
 import com.google.gson.Gson
 import com.typesafe.config.Config
 import org.apache.commons.lang.exception.ExceptionUtils
 import org.apache.spark.SparkContext
 import ContextManagerActor.{DeleteContext, IsAwake}
-import org.slf4j.LoggerFactory
 import responses.Job
 import server.domain.actors.JobActor._
 import server.domain.actors.ContextActor._
@@ -28,7 +27,7 @@ object ContextActor {
   case class FailedInit(message: String)
 }
 
-class ContextActor(localConfig: Config) extends Actor {
+class ContextActor(localConfig: Config) extends Actor with ActorLogging{
 
   var sparkContext: SparkContext = _
   var defaultConfig: Config = _
@@ -36,8 +35,6 @@ class ContextActor(localConfig: Config) extends Actor {
 
   var name = ""
   val gsonTransformer = new Gson()
-
-  val log = LoggerFactory.getLogger(getClass)
 
   startWatchingManagerActor()
 
@@ -108,7 +105,7 @@ class ContextActor(localConfig: Config) extends Actor {
     case Terminated(actor) => {
       if(actor.path.toString.contains("Supervisor/ContextManager")){
         log.info(s"Received TERMINATED message from: ${actor.path.toString}")
-        log.warn("Shutting down the system because the ManagerSystem terminated.")
+        log.warning("Shutting down the system because the ManagerSystem terminated.")
         gracefullyShutdown
       }
     }
@@ -117,9 +114,9 @@ class ContextActor(localConfig: Config) extends Actor {
       val jobState = jobStateMap.getOrElse(jobId, JobDoesNotExist())
       import server.JobStates._
       jobState match {
-        case x: JobRunSuccess => sender ! Job(jobId, name, FINISHED.toString, x.result)
-        case e: JobRunError => sender ! Job(jobId, name, ERROR.toString, e.errorMessage)
-        case x: JobStarted => sender ! Job(jobId, name, RUNNING.toString, "")
+        case x: JobRunSuccess => sender ! Job(jobId, name, FINISHED.toString, x.result, x.startTime)
+        case e: JobRunError => sender ! Job(jobId, name, ERROR.toString, e.errorMessage, e.startTime)
+        case x: JobStarted => sender ! Job(jobId, name, RUNNING.toString, "", x.startTime)
         case x: JobDoesNotExist => sender ! JobDoesNotExist
       }
     }
@@ -127,9 +124,9 @@ class ContextActor(localConfig: Config) extends Actor {
     case GetAllJobsStatus() => {
      import server.JobStates._
      val jobsList = jobStateMap.map {
-        case (id: String, x: JobRunSuccess) => Job(id, name, FINISHED.toString, x.result)
-        case (id: String, e: JobRunError) => Job(id, name, ERROR.toString, e.errorMessage)
-        case (id: String, x: JobStarted) => Job(id, name, RUNNING.toString, "")
+        case (id: String, x: JobRunSuccess) => Job(id, name, FINISHED.toString, x.result, x.startTime)
+        case (id: String, e: JobRunError) => Job(id, name, ERROR.toString, e.errorMessage, e.startTime)
+        case (id: String, x: JobStarted) => Job(id, name, RUNNING.toString, "", x.startTime)
       }.toList
       sender ! jobsList
     }
