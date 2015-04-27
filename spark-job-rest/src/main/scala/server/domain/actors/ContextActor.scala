@@ -100,6 +100,9 @@ class ContextActor(localConfig: Config) extends Actor with ActorLogging{
           jobStateMap += (job.uuid -> JobRunError(ExceptionUtils.getStackTrace(e)))
           log.error(s"Error running job : runningClass=${job.runningClass} contextName=${job.contextName} uuid=${job.uuid} ", e)
         }
+        case x:Any => {
+          log.error("Reiceived ANY from running job !!! " + x)
+        }
       }
     }
     case Terminated(actor) => {

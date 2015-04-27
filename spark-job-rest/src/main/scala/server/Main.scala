@@ -1,5 +1,6 @@
 package server
 
+import logging.LoggingOutputStream
 import server.domain.actors._
 
 import scala.concurrent.Await
@@ -14,6 +15,8 @@ import com.typesafe.config.ConfigFactory
  */
 object Main {
   def main(args: Array[String]) {
+
+    LoggingOutputStream.redirectConsoleOutput
 
     val defaultConfig = ConfigFactory.load()
     val masterConfig = defaultConfig.getConfig("manager")

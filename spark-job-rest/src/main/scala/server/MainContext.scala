@@ -2,6 +2,7 @@ package server
 
 import akka.actor.{Props, ActorSystem}
 import com.typesafe.config.ConfigFactory
+import logging.LoggingOutputStream
 import server.domain.actors.ContextActor
 import utils.ActorUtils
 import org.slf4j.LoggerFactory
@@ -11,6 +12,7 @@ import org.slf4j.LoggerFactory
 */
 object MainContext {
 
+  LoggingOutputStream.redirectConsoleOutput
   val log = LoggerFactory.getLogger(getClass)
 
   def main(args: Array[String]) {
