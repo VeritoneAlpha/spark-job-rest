@@ -19,12 +19,12 @@ class IntegrationTests extends FunSuite with BeforeAndAfter with ScalaFutures wi
   implicit val timeout = Timeout(10000)
   implicit val system = ActorSystem("localSystem")
 
-//  Main.main(Array[String]())
   val client = new SparkJobRestClient("http://localhost:8097")
-
   val contextName = "testContext"
-  val parameters = Map[String, String]("jars" -> "/Users/raduchilom/projects/spark-job-rest/examples/example-job/target/example-job.jar",
+  val exampleJarPath = "/Users/raduchilom/projects/spark-job-rest/examples/example-job/target/example-job.jar"
+  val parameters = Map[String, String]("jars" -> exampleJarPath,
     "input" -> "100")
+
 
   before {
   }
@@ -73,12 +73,19 @@ class IntegrationTests extends FunSuite with BeforeAndAfter with ScalaFutures wi
     val job = client.runJob("com.job.SparkJobImplemented", contextName, parameters)
     job shouldBe a [Job]
 
+    Thread.sleep(2000)
+
     val jobResult = client.getJob(job.jobId, contextName)
     jobResult.result should be("100")
 
     client.deleteContext(contextName) should be(true)
     contexts = client.getContexts()
     contexts.contexts.size should be(0)
+  }
+
+  test("Upload Jar") {
+    val uploadFlag = client.uploadJar("example-job.jar", exampleJarPath)
+    uploadFlag should be(true)
   }
 
 }
