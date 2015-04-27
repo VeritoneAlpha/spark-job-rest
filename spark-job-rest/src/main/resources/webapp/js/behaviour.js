@@ -622,7 +622,7 @@ $(function() {
     try {
         sparkJob = new sparkJobTemplate();
         sparkJob.init({
-            url: "http://10.3.22.104:8097/"
+            url: "http://127.0.0.1:8097/"
         });
     } catch (e) {
         errorHandler(e.message);
