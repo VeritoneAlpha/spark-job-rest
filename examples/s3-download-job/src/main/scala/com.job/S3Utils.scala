@@ -2,9 +2,9 @@ package com.job
 
 import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.services.s3.AmazonS3Client
-import com.amazonaws.services.s3.model.{GetObjectRequest, ObjectListing, ListObjectsRequest}
+import com.amazonaws.services.s3.model.{S3ObjectInputStream, GetObjectRequest, ObjectListing, ListObjectsRequest}
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.{Path, FileSystem}
+import org.apache.hadoop.fs.{FSDataOutputStream, Path, FileSystem}
 import org.apache.hadoop.io.IOUtils
 import org.slf4j.LoggerFactory
 
@@ -67,23 +67,36 @@ object S3Utils {
 
     val downloadTry = Try {
 
+      var inputStream: S3ObjectInputStream = null
+      var outputStream: FSDataOutputStream = null
+
+      try {
+
         log.info(s"Downloading file: $key")
         val s3object = s3Client.getObject(new GetObjectRequest(bucketName, key))
-        val inputStream = s3object.getObjectContent
+        inputStream = s3object.getObjectContent
 
         val outputPath = outputFolder + Path.SEPARATOR + key.substring(key.lastIndexOf(Path.SEPARATOR) + 1)
         log.info(s"Writing file to: $outputPath")
 
         val conf = new Configuration();
+        conf.set("fs.defaultFS", outputFolder)
+        // new instance & set file in configuration
         val fs = FileSystem.get(conf);
-        val outputStream = fs.create(new Path(outputPath));
+        outputStream = fs.create(new Path(outputPath));
 
         IOUtils.copyBytes(inputStream, outputStream, 8192)
 
-        inputStream.close()
-        outputStream.close()
-
         fs.getFileStatus(new Path(outputPath)).getLen
+
+      } finally {
+        if(inputStream != null) {
+          inputStream.close()
+        }
+        if(outputStream != null) {
+          outputStream.close()
+        }
+      }
     }
 
     (downloadTry, key)

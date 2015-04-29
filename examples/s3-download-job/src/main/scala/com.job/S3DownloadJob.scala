@@ -1,7 +1,7 @@
 package com.job
 
 import com.typesafe.config.Config
-import org.apache.spark.{SparkContext}
+import org.apache.spark.SparkContext
 import api.{SparkJobInvalid, SparkJobValid, SparkJobValidation, SparkJob}
 import org.slf4j.LoggerFactory
 
