@@ -1,4 +1,4 @@
-package server
+package responses
 
 /**
  * Created by raduchilom on 4/24/15.

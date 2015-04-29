@@ -7,7 +7,7 @@ import com.typesafe.config.Config
 import org.apache.commons.lang.exception.ExceptionUtils
 import org.apache.spark.SparkContext
 import ContextManagerActor.{DeleteContext, IsAwake}
-import responses.Job
+import responses.{JobStates, Job}
 import server.domain.actors.JobActor._
 import server.domain.actors.ContextActor._
 import utils.ActorUtils
@@ -115,7 +115,7 @@ class ContextActor(localConfig: Config) extends Actor with ActorLogging{
 
     case JobStatusEnquiry(contextName, jobId) => {
       val jobState = jobStateMap.getOrElse(jobId, JobDoesNotExist())
-      import server.JobStates._
+      import JobStates._
       jobState match {
         case x: JobRunSuccess => sender ! Job(jobId, name, FINISHED.toString, x.result, x.startTime)
         case e: JobRunError => sender ! Job(jobId, name, ERROR.toString, e.errorMessage, e.startTime)
@@ -125,7 +125,7 @@ class ContextActor(localConfig: Config) extends Actor with ActorLogging{
     }
 
     case GetAllJobsStatus() => {
-     import server.JobStates._
+     import JobStates._
      val jobsList = jobStateMap.map {
         case (id: String, x: JobRunSuccess) => Job(id, name, FINISHED.toString, x.result, x.startTime)
         case (id: String, e: JobRunError) => Job(id, name, ERROR.toString, e.errorMessage, e.startTime)
