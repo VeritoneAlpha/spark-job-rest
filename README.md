@@ -111,9 +111,22 @@ After editing all the configuration files SJR can be run by executing the script
 
 - DELETE /jars/{jarName} - Delete jar
 
+## HTTP Client
+
+All the API methods can be called from Scala/Java with the help of an HTTP Client.
+
+Maven Spark-Job-Rest-Client dependency:
+```
+<dependency>
+    <groupId>com.xpatterns</groupId>
+    <artifactId>spark-job-rest-client</artifactId>
+    <version>0.3.0</version>
+</dependency>
+```
+
 ## Create Spark Job Project
 
-Add maven Spark-Job-Rest dependency:
+Add maven Spark-Job-Rest-Api dependency:
 ```
 <dependency>
     <groupId>com.xpatterns</groupId>
@@ -202,4 +215,45 @@ curl -X DELETE 'localhost:8097/contexts/test-context'
 {
   "message": "Context deleted."
 }
+```
+
+**HTTP Client Example**
+
+```
+object Example extends App {
+  implicit val system = ActorSystem()
+  val contextName = "testContext"
+
+  try {
+    val sjrc = new SparkJobRestClient("http://localhost:8097")
+
+    val context = sjrc.createContext(contextName, Map("jars" -> "/Users/raduchilom/projects/spark-job-rest/examples/example-job/target/example-job.jar"))
+    println(context)
+
+    val job = sjrc.runJob("com.job.SparkJobImplemented", contextName, Map("input" -> "10"))
+    println(job)
+
+    var jobFinal = sjrc.getJob(job.jobId, job.contextName)
+    while (jobFinal.status.equals(JobStates.RUNNING.toString())) {
+      Thread.sleep(1000)
+      jobFinal = sjrc.getJob(job.jobId, job.contextName)
+    }
+    println(jobFinal)
+
+    sjrc.deleteContext(contextName)
+  } catch {
+    case e:Exception => {
+      e.printStackTrace()
+    }
+  }
+
+  system.shutdown()
+}
+```
+Running this would produce the output:
+
+```
+Context(testContext,16002)
+Job(ab63c19f-bbb4-461e-8c6f-f0a35f73a943,testContext,Running,,1430291077689)
+Job(ab63c19f-bbb4-461e-8c6f-f0a35f73a943,testContext,Finished,10,1430291078694)
 ```
