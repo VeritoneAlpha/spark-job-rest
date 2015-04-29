@@ -266,7 +266,10 @@ import spray.httpx.SprayJsonSupport.sprayJsonMarshaller
                   val resultFuture = jarActor ? AddJar(bodyPart.filename.get, bodyPart.entity.data.toByteArray)
                   resultFuture.map {
                     case Success(message: String) => ctx.complete(StatusCodes.OK, SimpleMessage(message))
-                    case Failure(e) => ctx.complete(StatusCodes.BadRequest, "")
+                    case Failure(e) =>  {
+                      log.error("Error uploading jar: ", e)
+                      ctx.complete(StatusCodes.BadRequest, "")
+                    }
                     case x: Any => ctx.complete(StatusCodes.InternalServerError, "")
 //                      The empty message is due to a bug on the Ui File Upload part. When fixed used ErrorResponse(e.getMessage)
                   }
