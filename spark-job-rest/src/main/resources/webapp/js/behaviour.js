@@ -444,7 +444,7 @@ var sparkJobTemplate = function () {
             for(var i = 0; i < response.length; i++) {
                 output += '<tr>' +
                             '<td>' +  response[i].name + '</td>' +
-                            '<td>' +  response[i].size + '</td>' +
+                            '<td>' +  Self.computeJarSize(response[i].size) + '</td>' +
                             '<td>' +  Self.convertTimestamp(response[i].timestamp) + '</td>' +
                             '<td><a class="delete" data-job="'+ response[i].name +'"><span class="glyphicon glyphicon-trash" aria-hidden="true"></span></a></td>' +
                         '</tr>';
@@ -615,6 +615,14 @@ var sparkJobTemplate = function () {
             }
         );
     };
+
+    Self.computeJarSize = function bytesToSize(bytes) {
+          var sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+          if (bytes == 0) return 'n/a';
+          var i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
+          if (i == 0) return bytes + ' ' + sizes[i];
+          return (bytes / Math.pow(1024, i)).toFixed(1) + ' ' + sizes[i];
+      };
 };
 
 $(function() {
