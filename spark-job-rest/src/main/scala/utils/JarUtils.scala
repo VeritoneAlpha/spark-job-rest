@@ -26,7 +26,7 @@ object JarUtils {
         HdfsUtils.copyJarFromHdfs(path, tempFolder)
         tempFolder + File.pathSeparator + getJarName(path)
       } else {
-        jarFolder + getJarName(path)
+        jarFolder + File.separator + getJarName(path)
       }
 
     val diskFile = new File(diskPath)
@@ -55,7 +55,7 @@ object JarUtils {
         if(path.startsWith("/")){
           path
         } else {
-          jarFolder + getJarName(path)
+          jarFolder + File.separator + getJarName(path)
         }
       val diskFile = new File(diskPath)
       if (diskFile.exists()) {
