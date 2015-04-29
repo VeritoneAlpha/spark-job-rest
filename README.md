@@ -158,3 +158,4 @@ curl -X DELETE 'localhost:8097/context/test-context'
 
 Context deleted.
 ```
+
