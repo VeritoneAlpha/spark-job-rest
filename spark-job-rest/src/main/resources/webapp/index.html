@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Spark-Job-Rest</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+    <div id="wrapper">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-12">
+
+
+
+
+                    <!-- start nav-tabs -->
+                    <ul id="navTabs" class="nav nav-tabs nav-justified">
+                        <li class="active" role="presentation"><a aria-controls="contexts" href="#contexts" data-toggle="tab">Contexts</a></li>
+                        <li role="presentation"><a aria-controls="jobs" href="#jobs" data-toggle="tab">Jobs</a></li>
+                        <li role="presentation"><a aria-controls="jars" href="#jars" data-toggle="tab">Jars</a></li>
+                    </ul>
+                    <!-- end nav-tabs -->
+
+                    <!-- Tab panes -->
+                    <div id="navContents" class="tab-content">
+                        <div role="tabpanel" class="tab-pane active" id="contexts">
+
+                            <div id="contextsTable">
+                                <table class="table table-striped">
+                                    <thead>
+                                      <tr>
+                                        <th>Context Name</th>
+                                        <th>Spark UI Port</th>
+                                        <th></th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+
+                                    </tbody>
+                                </table>
+                                <div class="clearfix">
+                                    <button data-target="#addContext" data-toggle="modal" class="btn btn-success btn-add" type="button"><span aria-hidden="true" class="glyphicon glyphicon-plus-sign"></span> Add context</button>
+                                </div>
+                            </div>
+                        </div>
+
+
+
+                        <div role="tabpanel" class="tab-pane" id="jobs">
+                            <div id="jobsTable">
+                                <table class="table table-striped">
+                                    <thead>
+                                      <tr>
+                                        <th>Job ID</th>
+                                        <th>Context Name</th>
+                                        <th>Status</th>
+                                        <th></th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+
+                                    </tbody>
+                                </table>
+                                <div class="clearfix">
+                                    <button data-target="#runJob" data-toggle="modal" class="btn btn-success btn-add" type="button"><span aria-hidden="true" class="glyphicon glyphicon-plus-sign"></span> Run job</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div role="tabpanel" class="tab-pane" id="jars">
+                            <div id="jarsTable">
+                                <table class="table table-striped">
+                                    <thead>
+                                      <tr>
+                                        <th>Name</th>
+                                        <th>Size</th>
+                                        <th>Time</th>
+                                        <th></th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+
+                                    </tbody>
+                                </table>
+                                <div class="clearfix">
+                                    <button data-target="#uploadJar" data-toggle="modal" class="btn btn-success btn-add" type="button"><span aria-hidden="true" class="glyphicon glyphicon-plus-sign"></span> Upload jar</button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+
+
+
+
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- start addContext -->
+    <div id="addContext" class="modal fade" role="dialog"  aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">Add context</h4>
+            </div>
+            <div class="modal-body">
+                <form role="form">
+                    <div class="form-group">
+                        <label for="ctx_name">Name:</label>
+                        <input type="text" class="form-control" id="ctx_name" placeholder="Enter context name">
+                    </div>
+
+
+                    <div class="form-group">
+                        <label for="ctx_jar">Jar:</label>
+
+                        <div class="input-group">
+                          <input type="text" class="form-control" id="ctx_jar" placeholder="Enter context jar">
+                          <div class="input-group-btn">
+                            <button id="jarDropdownToggle" aria-expanded="false" data-toggle="dropdown" class="btn btn-default dropdown-toggle" type="button">
+                              <span class="caret"></span>
+                              <span class="sr-only">Toggle Dropdown</span>
+                            </button>
+                            <button class="btn btn-success jar-add" type="button"><span aria-hidden="true" class="glyphicon glyphicon-plus-sign"></span> Add jar</button>
+
+
+                            <ul id="jarSuggestList" class="dropdown-menu dropdown-menu-right" role="menu">
+
+                            </ul>
+                          </div><!-- /btn-group -->
+                        </div><!-- /input-group -->
+                    </div>
+
+                    <table id="ctxJarsTable" class="table table-striped">
+                        <tbody>
+
+                        </tbody>
+                    </table>
+
+                    <div class="form-group">
+                        <label for="ctx_param">Parameter:</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="ctx_param" placeholder="Enter context parameter">
+                            <span class="input-group-btn">
+                                <button class="btn btn-success param-add" type="button"><span aria-hidden="true" class="glyphicon glyphicon-plus-sign"></span> Add parameter</button>
+                            </span>
+                        </div><!-- /input-group -->
+                    </div>
+                    <table id="ctxParamsTable" class="table table-striped">
+                        <tbody>
+
+                        </tbody>
+                    </table>
+
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary btn-save">Add context</button>
+            </div>
+          </div><!-- /.modal-content -->
+        </div><!-- /.modal-dialog -->
+    </div><!-- /.modal -->
+    <!-- end addContext -->
+
+
+    <!-- start runJob -->
+    <div id="runJob" class="modal fade" role="dialog"  aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">Run job</h4>
+            </div>
+            <div class="modal-body">
+                <form role="form">
+                    <div class="form-group">
+                        <label for="job_class">Job Class:</label>
+                        <input type="text" class="form-control" id="job_class" placeholder="Enter job class">
+                    </div>
+
+
+                    <div class="form-group">
+                        <label for="ctxSuggestList">Context:</label>
+                        <select class="form-control" id="ctxSuggestList">
+                        </select>
+
+                    </div>
+
+                    <div class="form-group">
+                        <label for="ctx_param">Parameter:</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="job_param" placeholder="Enter job parameter">
+                            <span class="input-group-btn">
+                                <button class="btn btn-success param-add" type="button"><span aria-hidden="true" class="glyphicon glyphicon-plus-sign"></span> Add parameter</button>
+                            </span>
+                        </div><!-- /input-group -->
+                    </div>
+                    <table id="jobParamsTable" class="table table-striped">
+                        <tbody>
+
+                        </tbody>
+                    </table>
+
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary btn-save">Run job</button>
+            </div>
+          </div><!-- /.modal-content -->
+        </div><!-- /.modal-dialog -->
+    </div><!-- /.modal -->
+    <!-- end runJob -->
+
+
+    <!-- start uploadJar -->
+    <div id="uploadJar" class="modal fade" role="dialog"  aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">Upload jar</h4>
+            </div>
+            <div class="modal-body">
+                <form enctype="multipart/form-data">
+                    <div class="form-group">
+                        <input id="uploadJarInput" type="file">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary btn-save">Upload jar</button>
+            </div>
+          </div><!-- /.modal-content -->
+        </div><!-- /.modal-dialog -->
+    </div><!-- /.modal -->
+    <!-- end uploadJar -->
+
+
+    <div id="ajaxLoader"></div>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src="js/bootstrap-notify.min.js"></script>
+    <script src="js/fileinput.min.js"></script>
+    <script src="js/spin.min.js"></script>
+    <script src="js/behaviour.js"></script>
+</body>
+</html>

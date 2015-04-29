@@ -1,15 +1,42 @@
 ## Features:
 
-**Supports multiple spark contexts created from the same node**
+**Supports multiple spark contexts created from the same server**
 
 The main problem this project solves is the inability to run multiple Spark contexts from the same JVM. This is a bug in Spark core that was also present in Ooyala's Spark Job Server, from which this project is inspired. The project launches a new process for each Spark context/application, with its own driver memory setting and its own driver log. Each driver JVM is created with its own Spark UI port, sent back to the api caller. Inter-process communication is achieved with akka actors, and each process is shut down when a Spark context/application is deleted.
 
-## Building Spark-job-rest (SJR)
+## Building Spark-Job-Rest (SJR)
 
 The project is build with Maven3 and Java7.
 ```
 mvn clean install
 ```
+SJR can now be deployed from spark-job-rest/spark-job-rest/target/spark-job-rest.tar.gz
+
+If your build fails with this error:
+```
+[ERROR] spark-job-rest/src/main/scala/server/domain/actors/ContextManagerActor.scala:171: error: value redirectOutput is not a member of ProcessBuilder
+```
+This happens because Maven uses Java6. You can run mvn -version in order to check the Java version that Maven uses.
+```
+$ mvn -version
+Apache Maven 3.2.5
+Java version: 1.6.0_65
+```
+If Maven uses Java6 you need to change it to Java7. This can be done by adding the JAVA_HOME export in your ~/.mavenrc file:
+```
+OSX:
+export JAVA_HOME=/Library/Java/JavaVirtualMachines/{jdk-version}/Contents/Home
+```
+```
+Ubuntu:
+export JAVA_HOME=/usr/lib/jvm/{jdk-version}
+```
+
+If running from IDE fails with:
+```
+Exception in thread "main" java.lang.NoClassDefFoundError: akka/actor/Props
+```
+This happens because the spark dependency has the provided scope. In order to run from IDE you can remove the provided scope for the spark dependency(inside pom.xml) or you can add the spark assembly jar to the running classpath.
 
 If your build fails with this error:
 ```
@@ -39,7 +66,8 @@ In order to configure SJR the following file needs to be edited: resources/appli
 ``` 
 #spark default configuration
 spark.executor.memory=2g
-spark.mesos.coarse=false
+spark.master="local"
+spark.path="/Users/user/spark-1.1.0"
 #Default Spark Driver JVM memory
 driver.xmxMemory = 1g
 ```
@@ -63,42 +91,78 @@ After editing all the configuration files SJR can be run by executing the script
 
 **Contexts**
 
-- POST /context/{contextName}  -  Create Context
+- POST /contexts/{contextName}  -  Create Context
 
  * Body:  Raw entity with key-value pairs. 
- * jars key is required and it should be in the form of a ':' separated list of jar paths. These jars will be added at Spark context creation time to the class path of the newly created context's JVM process.
+ * jars key is required and it should be in the form of a comma separated list of jar paths. These jars will be added at Spark context creation time to the class path of the newly created context's JVM process. There are 3 types of jar paths supported:
+    * Absolute path on the server side : /home/ubuntu/example.jar
+    * Name of the jar that was uploaded to the server : example.jar
+    * Hdfs path : hdfs://devbox.local:8020/user/test/example.jar
+  
   ``` 
- jars="/home/ubuntu/example.jar:/home/ubuntu/spark-job-project.jar”
+  Body example:
+ jars="/home/ubuntu/example.jar,example.jar,hdfs://devbox.local:8020/user/test/example.jar”
  spark.executor.memory=2g
  driver.xmxMemory = 1g
   ```
 
-- GET /context/{contextName}  -  returns Context exists. | No such context.
+- GET /contexts/{contextName}  -  returns Context JSON object | No such context.
 
-- DELETE /context/{contextName}  -  Delete Context
+- DELETE /contexts/{contextName}  -  Delete Context
 
 **Jobs**
 
-- POST /job?runningClass={runningClass}&context={contextName}  - Job Submission 
+- POST /jobs?runningClass={runningClass}&context={contextName}  - Job Submission 
 
   * Body:  Raw entity with key-value pairs. Here you can set any configuration properties that will be passed to the config parameter of the validate and run methods of the provided jar (see the SparkJob definition below)
 
-- GET /job?jobId={uuid}&contextName={contextName} - Gets the result or status of a specific job
+- GET /jobs/{jobId}?contextName={contextName} - Gets the result or state of a specific job
 
-## Create Spark Job Project
+- GET /jobs - Gets the states/results of all jobs from all running contexts 
 
-Add maven Spark-Job-Rest dependency:
+**Jars**
+
+- POST /jars/{jarName}  - Upload jar
+  * Body: Jar Bytes
+  
+- POST /jars  - Upload jar
+  * Body: MultiPart Form
+
+- GET /jars - Gets all the uploaded jars
+
+- DELETE /jars/{jarName} - Delete jar
+
+## HTTP Client
+
+All the API methods can be called from Scala/Java with the help of an HTTP Client.
+
+Maven Spark-Job-Rest-Client dependency:
 ```
 <dependency>
     <groupId>com.xpatterns</groupId>
-    <artifactId>spark-job-rest</artifactId>
-    <version>0.2.0</version>
+    <artifactId>spark-job-rest-client</artifactId>
+    <version>0.3.0</version>
+</dependency>
+```
+
+## Create Spark Job Project
+
+Add maven Spark-Job-Rest-Api dependency:
+```
+<dependency>
+    <groupId>com.xpatterns</groupId>
+    <artifactId>spark-job-rest-api</artifactId>
+    <version>0.3.0</version>
 </dependency>
 ```
 
 To create a job that can be submitted through the server, the class must implement the SparkJob trait.
 
 ```
+import com.typesafe.config.Config
+import org.apache.spark.SparkContext
+import api.{SparkJobInvalid, SparkJobValid, SparkJobValidation, SparkJob}
+
 class Example extends SparkJob {
     override def runJob(sc:SparkContext, jobConfig: Config): Any = { ... }
     override def validate(sc:SparkContext, config: Config): SparkJobValidation = { ... }
@@ -110,51 +174,107 @@ class Example extends SparkJob {
 
 ## Example
 
-An example for this project can be found here: ```spark-job-rest/example/example-job```. In order to package it, run 
+An example for this project can be found here: ```spark-job-rest/examples/example-job```. In order to package it, run 
 ``` mvn clean install ```
 
 **Create a context**
 ```
-$ curl -X POST -d "jars=/Users/raduc/projects/spark-job-rest/example/example-job/target/example-job.jar" 'localhost:8097/context/test-context'
+$ curl -X POST -d "jars=/Users/raduc/projects/spark-job-rest/examples/example-job/target/example-job.jar" 'localhost:8097/contexts/test-context'
 
-16001
+{
+  "contextName": "test-context",
+  "sparkUiPort": "16003"
+}
 ```
-
-The received answer ```16001``` represents the spark ui port for your application.
 
 **Check if context exists**
 
 ```
-curl 'localhost:8097/context/test-context'
+curl 'localhost:8097/contexts/test-context'
 
-Context exists.
+{
+  "contextName": "test-context",
+  "sparkUiPort": "16003"
+}
 ```
 
 **Run job** - The example job creates an RDD from a Range(0,input) and applies count on it.
 
 ```
-$ curl -X POST -d "input=10000" 'localhost:8097/job?runningClass=com.job.SparkJobImplemented&context=test-context'
+$ curl -X POST -d "input=10000" 'localhost:8097/jobs?runningClass=com.job.SparkJobImplemented&contextName=test-context'
 
-bf880779-f5dc-4ff1-823e-c4bc72621385
+{
+  "jobId": "2bd438a2-ac1e-401a-b767-5fa044b2bd69",
+  "contextName": "test-context",
+  "status": "Running",
+  "result": "",
+  "startTime": 1430287260144
+}
 ```
 
-The received answer ```bf880779-f5dc-4ff1-823e-c4bc72621385``` represents the jobId. This id can be used to query for the job status/results.
+```2bd438a2-ac1e-401a-b767-5fa044b2bd69``` represents the jobId. This id can be used to query for the job status/results.
 
 **Query for results**
 
 ```
-$ curl 'localhost:8097/job?contextName=test-context&jobId=bf880779-f5dc-4ff1-823e-c4bc72621385'
+$ curl 'localhost:8097/jobs/2bd438a2-ac1e-401a-b767-5fa044b2bd69?contextName=test-context'
 
 {
-  "state": "Finished",
-  "result": 10000
+  "jobId": "2bd438a2-ac1e-401a-b767-5fa044b2bd69",
+  "contextName": "test-context",
+  "status": "Finished",
+  "result": "10000",
+  "startTime": 1430287261108
 }
 ```
 
 **Delete context**
 
 ```
-curl -X DELETE 'localhost:8097/context/test-context'
+curl -X DELETE 'localhost:8097/contexts/test-context'
 
-Context deleted.
+{
+  "message": "Context deleted."
+}
+```
+
+**HTTP Client Example**
+
+```
+object Example extends App {
+  implicit val system = ActorSystem()
+  val contextName = "testContext"
+
+  try {
+    val sjrc = new SparkJobRestClient("http://localhost:8097")
+
+    val context = sjrc.createContext(contextName, Map("jars" -> "/Users/raduchilom/projects/spark-job-rest/examples/example-job/target/example-job.jar"))
+    println(context)
+
+    val job = sjrc.runJob("com.job.SparkJobImplemented", contextName, Map("input" -> "10"))
+    println(job)
+
+    var jobFinal = sjrc.getJob(job.jobId, job.contextName)
+    while (jobFinal.status.equals(JobStates.RUNNING.toString())) {
+      Thread.sleep(1000)
+      jobFinal = sjrc.getJob(job.jobId, job.contextName)
+    }
+    println(jobFinal)
+
+    sjrc.deleteContext(contextName)
+  } catch {
+    case e:Exception => {
+      e.printStackTrace()
+    }
+  }
+
+  system.shutdown()
+}
+```
+Running this would produce the output:
+
+```
+Context(testContext,16002)
+Job(ab63c19f-bbb4-461e-8c6f-f0a35f73a943,testContext,Running,,1430291077689)
+Job(ab63c19f-bbb4-461e-8c6f-f0a35f73a943,testContext,Finished,10,1430291078694)
 ```
