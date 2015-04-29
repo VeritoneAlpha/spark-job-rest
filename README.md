@@ -1,6 +1,6 @@
 ## Features:
 
-**Supports multiple spark contexts created from the same node**
+**Supports multiple spark contexts created from the same server**
 
 The main problem this project solves is the inability to run multiple Spark contexts from the same JVM. This is a bug in Spark core that was also present in Ooyala's Spark Job Server, from which this project is inspired. The project launches a new process for each Spark context/application, with its own driver memory setting and its own driver log. Each driver JVM is created with its own Spark UI port, sent back to the api caller. Inter-process communication is achieved with akka actors, and each process is shut down when a Spark context/application is deleted.
 
@@ -45,7 +45,8 @@ In order to configure SJR the following file needs to be edited: resources/appli
 ``` 
 #spark default configuration
 spark.executor.memory=2g
-spark.mesos.coarse=false
+spark.master="local"
+spark.path="/Users/user/spark-1.1.0"
 #Default Spark Driver JVM memory
 driver.xmxMemory = 1g
 ```
@@ -84,7 +85,7 @@ After editing all the configuration files SJR can be run by executing the script
  driver.xmxMemory = 1g
   ```
 
-- GET /contexts/{contextName}  -  returns Context exists. | No such context.
+- GET /contexts/{contextName}  -  returns Context JSON object | No such context.
 
 - DELETE /contexts/{contextName}  -  Delete Context
 
@@ -102,6 +103,9 @@ After editing all the configuration files SJR can be run by executing the script
 
 - POST /jars/{jarName}  - Upload jar
   * Body: Jar Bytes
+  
+- POST /jars  - Upload jar
+  * Body: MultiPart Form
 
 - GET /jars - Gets all the uploaded jars
 
@@ -141,39 +145,52 @@ An example for this project can be found here: ```spark-job-rest/examples/exampl
 
 **Create a context**
 ```
-$ curl -X POST -d "jars=/Users/raduc/projects/spark-job-rest/example/example-job/target/example-job.jar" 'localhost:8097/contexts/test-context'
+$ curl -X POST -d "jars=/Users/raduc/projects/spark-job-rest/examples/example-job/target/example-job.jar" 'localhost:8097/contexts/test-context'
 
-16001
+{
+  "contextName": "test-context",
+  "sparkUiPort": "16003"
+}
 ```
-
-The received answer ```16001``` represents the spark ui port for your application.
 
 **Check if context exists**
 
 ```
 curl 'localhost:8097/contexts/test-context'
 
-Context exists.
+{
+  "contextName": "test-context",
+  "sparkUiPort": "16003"
+}
 ```
 
 **Run job** - The example job creates an RDD from a Range(0,input) and applies count on it.
 
 ```
-$ curl -X POST -d "input=10000" 'localhost:8097/jobs?runningClass=com.job.SparkJobImplemented&context=test-context'
+$ curl -X POST -d "input=10000" 'localhost:8097/jobs?runningClass=com.job.SparkJobImplemented&contextName=test-context'
 
-bf880779-f5dc-4ff1-823e-c4bc72621385
+{
+  "jobId": "2bd438a2-ac1e-401a-b767-5fa044b2bd69",
+  "contextName": "test-context",
+  "status": "Running",
+  "result": "",
+  "startTime": 1430287260144
+}
 ```
 
-The received answer ```bf880779-f5dc-4ff1-823e-c4bc72621385``` represents the jobId. This id can be used to query for the job status/results.
+```2bd438a2-ac1e-401a-b767-5fa044b2bd69``` represents the jobId. This id can be used to query for the job status/results.
 
 **Query for results**
 
 ```
-$ curl 'localhost:8097/jobs?contextName=test-context&jobId=bf880779-f5dc-4ff1-823e-c4bc72621385'
+$ curl 'localhost:8097/jobs/2bd438a2-ac1e-401a-b767-5fa044b2bd69?contextName=test-context'
 
 {
-  "state": "Finished",
-  "result": 10000
+  "jobId": "2bd438a2-ac1e-401a-b767-5fa044b2bd69",
+  "contextName": "test-context",
+  "status": "Finished",
+  "result": "10000",
+  "startTime": 1430287261108
 }
 ```
 
@@ -182,5 +199,7 @@ $ curl 'localhost:8097/jobs?contextName=test-context&jobId=bf880779-f5dc-4ff1-82
 ```
 curl -X DELETE 'localhost:8097/contexts/test-context'
 
-Context deleted.
+{
+  "message": "Context deleted."
+}
 ```
