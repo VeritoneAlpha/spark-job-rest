@@ -4,12 +4,13 @@
 
 The main problem this project solves is the inability to run multiple Spark contexts from the same JVM. This is a bug in Spark core that was also present in Ooyala's Spark Job Server, from which this project is inspired. The project launches a new process for each Spark context/application, with its own driver memory setting and its own driver log. Each driver JVM is created with its own Spark UI port, sent back to the api caller. Inter-process communication is achieved with akka actors, and each process is shut down when a Spark context/application is deleted.
 
-## Building Spark-job-rest (SJR)
+## Building Spark-Job-Rest (SJR)
 
 The project is build with Maven3 and Java7.
 ```
 mvn clean install
 ```
+SJR can now be deployed from spark-job-rest/spark-job-rest/target/spark-job-rest.tar.gz
 
 If your build fails with this error:
 ```
