@@ -7,7 +7,9 @@ import com.typesafe.config.Config
 import org.apache.commons.lang.exception.ExceptionUtils
 import org.apache.spark.SparkContext
 import ContextManagerActor.{DeleteContext, IsAwake}
+import org.slf4j.LoggerFactory
 import responses.{JobStates, Job}
+import server.MainContext._
 import server.domain.actors.JobActor._
 import server.domain.actors.ContextActor._
 import utils.ActorUtils
@@ -27,8 +29,9 @@ object ContextActor {
   case class FailedInit(message: String)
 }
 
-class ContextActor(localConfig: Config) extends Actor with ActorLogging{
+class ContextActor(localConfig: Config) extends Actor {
 
+  val log = LoggerFactory.getLogger(getClass)
   var sparkContext: SparkContext = _
   var defaultConfig: Config = _
   var jobStateMap = new HashMap[String, JobStatus]() with SynchronizedMap[String, JobStatus]
@@ -108,7 +111,7 @@ class ContextActor(localConfig: Config) extends Actor with ActorLogging{
     case Terminated(actor) => {
       if(actor.path.toString.contains("Supervisor/ContextManager")){
         log.info(s"Received TERMINATED message from: ${actor.path.toString}")
-        log.warning("Shutting down the system because the ManagerSystem terminated.")
+        log.warn("Shutting down the system because the ManagerSystem terminated.")
         gracefullyShutdown
       }
     }
@@ -145,7 +148,9 @@ class ContextActor(localConfig: Config) extends Actor with ActorLogging{
   }
 
   def startWatchingManagerActor() = {
-    val managerActor = context.actorSelection(ActorUtils.getActorAddress("ManagerSystem", getValueFromConfig(localConfig,"manager.akka.remote.netty.tcp.port", 4042), "Supervisor/ContextManager"))
+    val managerPort = getValueFromConfig(localConfig,"manager.akka.remote.netty.tcp.port", 4042)
+    log.info("Trying to watch the manager actor at port: " + managerPort)
+    val managerActor = context.actorSelection(ActorUtils.getActorAddress("ManagerSystem", managerPort, "Supervisor/ContextManager"))
     managerActor.resolveOne().onComplete {
       case Success(actorRef) => {
         log.info(s"Now watching the ContextManager from this actor.")
