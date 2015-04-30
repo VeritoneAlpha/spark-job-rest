@@ -162,6 +162,7 @@ var sparkJobTemplate = function () {
 
             Self.deleteContext(ctx).done(function(data) {
                 this_.closest('tr').remove();
+                Self.notifySuccess("Deleted context: " + ctx)
             });
 
         });
@@ -194,6 +195,7 @@ var sparkJobTemplate = function () {
                             '</tr>';
 
                     ctxTable.prepend(output);
+                    Self.notifySuccess("Created context: " + response.contextName)
                 })
                 .fail(function(data) {
                     Self.notify(data.responseJSON.error);
@@ -277,8 +279,11 @@ var sparkJobTemplate = function () {
                 var response = data.jars,
                     output = '';
 
+                console.log(response.length)
                 if(response.length) {
                     jarDropdownToggle.prop('disabled',false);
+                } else {
+                    jarDropdownToggle.prop('disabled',true);
                 }
 
                 for(var i = 0; i < response.length; i++) {
@@ -368,6 +373,7 @@ var sparkJobTemplate = function () {
                             '</tr>';
 
                     jobsTable.prepend(output);
+                    Self.notifyInfo("Started running job: " + response.jobId)
                 })
                 .fail(function(data) {
                     Self.notify(data.responseJSON.error);
@@ -458,6 +464,7 @@ var sparkJobTemplate = function () {
                 ctx = this_.data('job');
 
             Self.deleteJar(ctx).done(function(data) {
+                Self.notifySuccess('Deleted jar: ' + ctx);
                 this_.closest('tr').remove();
             });
 
@@ -469,14 +476,16 @@ var sparkJobTemplate = function () {
             uploadUrl: Self.params.url + "jars"
         });
 
-        uploadJarInput.on('filebatchuploadsuccess filebatchuploaderror', function(event, params) {
+        uploadJarInput.on('filebatchuploadsuccess', function(event, params) {
+            Self.notifySuccess('Uploaded jar');
             Self.enableScreen();
             uploadJarModal.modal('hide');
         });
 
         uploadJarInput.on('filebatchuploaderror', function(event, data) {
             Self.notify('Could not upload jar');
-
+            Self.enableScreen();
+            uploadJarModal.modal('hide');
         });
 
 
@@ -607,14 +616,43 @@ var sparkJobTemplate = function () {
             {message: msg},
             {
                 type: 'danger',
-                delay: 2000,
+                delay: 3000,
+                mouse_over: 'pause',
                 animate: {
-                    enter: 'animated fadeInRight',
-                    exit: 'animated fadeOutRight'
+                    enter: 'animated fadeInDown',
+                    exit: 'animated fadeOutUp'
                 }
             }
         );
     };
+
+    Self.notifyInfo = function(msg) {
+        $.notify(
+            {message: msg},
+            {
+                type: 'info',
+                delay: 3000,
+                animate: {
+                    enter: 'animated fadeInDown',
+                    exit: 'animated fadeOutUp'
+                }
+            }
+        );
+    };
+
+    Self.notifySuccess = function(msg) {
+            $.notify(
+                {message: msg},
+                {
+                    type: 'success',
+                    delay: 3000,
+                    animate: {
+                        enter: 'animated fadeInDown',
+                        exit: 'animated fadeOutUp'
+                    }
+                }
+            );
+        };
 
     Self.computeJarSize = function bytesToSize(bytes) {
           var sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
