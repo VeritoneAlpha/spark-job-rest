@@ -87,7 +87,8 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef) extends Act
                 val processBuilder = createProcessBuilder(contextName, port, result.pathForClasspath, mergedConfig)
                 processMap += contextName -> processBuilder.start()
 
-                val actorRef = context.actorSelection(ActorUtils.getContextActorAddress(contextName, port))
+                val host = getValueFromConfig(defaultConfig, ActorUtils.HOST_PROPERTY_NAME, "127.0.0.1")
+                val actorRef = context.actorSelection(ActorUtils.getContextActorAddress(contextName, host, port))
                 sendInitMessage(contextName, port, actorRef, webSender, mergedConfig, result.pathForSpark)
 
               }

@@ -148,9 +148,10 @@ class ContextActor(localConfig: Config) extends Actor {
   }
 
   def startWatchingManagerActor() = {
-    val managerPort = getValueFromConfig(localConfig,"manager.akka.remote.netty.tcp.port", 4042)
-    log.info("Trying to watch the manager actor at port: " + managerPort)
-    val managerActor = context.actorSelection(ActorUtils.getActorAddress("ManagerSystem", managerPort, "Supervisor/ContextManager"))
+    val managerPort = getValueFromConfig(localConfig, ActorUtils.PORT_PROPERTY_NAME, 4042)
+    val managerHost = getValueFromConfig(localConfig, ActorUtils.HOST_PROPERTY_NAME, "127.0.0.1")
+    log.info("Trying to watch the manager actor at : " + managerHost + ":" + managerPort)
+    val managerActor = context.actorSelection(ActorUtils.getActorAddress("ManagerSystem", managerHost, managerPort, "Supervisor/ContextManager"))
     managerActor.resolveOne().onComplete {
       case Success(actorRef) => {
         log.info(s"Now watching the ContextManager from this actor.")
