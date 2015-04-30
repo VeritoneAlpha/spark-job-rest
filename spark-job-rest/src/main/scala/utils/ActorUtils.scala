@@ -4,6 +4,7 @@ import java.io.IOException
 import java.net.{Socket, DatagramSocket, ServerSocket}
 
 import com.typesafe.config.{Config, ConfigFactory}
+import server.domain.actors._
 
 /**
  * Created by raduc on 11/11/14.
@@ -17,12 +18,15 @@ object ActorUtils {
     "-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=" + jmxPort + " -Dcom.sun.management.jmxremote.local.only=false -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false"
   }
 
-  def getContextActorAddress(contextName: String, port: Int): String ={
-    getActorAddress(PREFIX_CONTEXT_SYSTEM + contextName, port, PREFIX_CONTEXT_ACTOR + contextName)
+  val HOST_PROPERTY_NAME = "manager.akka.remote.netty.tcp.hostname"
+  val PORT_PROPERTY_NAME = "manager.akka.remote.netty.tcp.port"
+
+  def getContextActorAddress(contextName: String, host: String, port: Int): String ={
+    getActorAddress(PREFIX_CONTEXT_SYSTEM + contextName, host, port, PREFIX_CONTEXT_ACTOR + contextName)
   }
 
-  def getActorAddress(systemName: String, port: Int, actorName: String): String = {
-    "akka.tcp://"  + systemName + "@localhost:" + port + "/user/" + actorName
+  def getActorAddress(systemName: String, host: String, port: Int, actorName: String): String = {
+    "akka.tcp://"  + systemName + "@" + host + ":" + port + "/user/" + actorName
   }
 
   def findAvailablePort(lastUsedPort: Int): Integer = {
@@ -62,6 +66,8 @@ object ActorUtils {
 
   def remoteConfig(hostname: String, port: Int, commonConfig: Config): Config = {
 
+    val host = getValueFromConfig(commonConfig, ActorUtils.HOST_PROPERTY_NAME, "127.0.0.1")
+
     val configStr = """
       akka{
         log-dead-letters = 0
@@ -75,7 +81,7 @@ object ActorUtils {
           log-remote-lifecycle-events = off
           netty.tcp {
               maximum-frame-size = 512000b
-              hostname = "localhost"
+              hostname = """" + host + """"
               port = """ + port +
       """ }
         }
