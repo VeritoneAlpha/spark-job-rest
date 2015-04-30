@@ -266,7 +266,7 @@ import spray.httpx.SprayJsonSupport.sprayJsonMarshaller
                   val resultFuture = jarActor ? AddJar(bodyPart.filename.get, bodyPart.entity.data.toByteArray)
                   resultFuture.map {
                     case Success(message: String) => ctx.complete(StatusCodes.OK, SimpleMessage(message))
-                    case Failure(e) => {
+                    case Failure(e) =>  {
                       log.error("Error uploading jar: ", e)
                       ctx.complete(StatusCodes.BadRequest, "")
                     }
