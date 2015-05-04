@@ -20,15 +20,12 @@ class S3DownloadJob extends SparkJob {
     val accessKey = jobConfig.getString("s3.accessKey")
     val secretAccessKey = jobConfig.getString("s3.secretAccessKey")
 
-    val inputKey = jobConfig.getString("s3.input")
     val bucketName = jobConfig.getString("s3.bucket")
 
     val numPartitions = jobConfig.getInt("num.partitions")
     val outputFolder = jobConfig.getString("fs.output")
 
-
-
-    val fileList = S3Utils.getFiles(bucketName, inputKey, accessKey, secretAccessKey)
+    val fileList = S3Utils.getFiles(bucketName, accessKey, secretAccessKey)
 //    fileList.foreach(println)
 
     val files = sc.parallelize(fileList, numPartitions)
@@ -56,18 +53,20 @@ class S3DownloadJob extends SparkJob {
       }
     }.collect()
     log.warn(s"There were ${errorFiles.size} files with error")
-    errorFiles.foreach(t => log.error(t.toString()))
+    errorFiles.foreach(t => log.error("", t._1.get))
 
     errorFiles
   }
 
   override def validate(sc: SparkContext, config: Config): SparkJobValidation = {
-    if(config.hasPath("s3.accessKey")) SparkJobValid() else SparkJobInvalid("The \"s3.accessKey\" parameter is missing.")
-    if(config.hasPath("s3.secretAccessKey")) SparkJobValid() else SparkJobInvalid("The \"s3.secretAccessKey\" parameter is missing.")
+    if(config.hasPath("s3.accessKey")) SparkJobInvalid("The \"s3.accessKey\" parameter is missing.")
+    if(config.hasPath("s3.secretAccessKey")) SparkJobInvalid("The \"s3.secretAccessKey\" parameter is missing.")
 
-    if(config.hasPath("s3.bucket")) SparkJobValid() else SparkJobInvalid("The \"s3.bucket\" parameter is missing.")
-    if(config.hasPath("s3.input")) SparkJobValid() else SparkJobInvalid("The \"s3.input\" parameter is missing.")
+    if(config.hasPath("s3.bucket")) SparkJobInvalid("The \"s3.bucket\" parameter is missing.")
 
-    if(config.hasPath("fs.output")) SparkJobValid() else SparkJobInvalid("The \"fs.output\" parameter is missing.")
+    if(config.hasPath("fs.output")) SparkJobInvalid("The \"fs.output\" parameter is missing.")
+    if(config.hasPath("num.partitions")) SparkJobInvalid("The \"num.partitions\" parameter is missing.")
+
+    SparkJobValid()
   }
 }
