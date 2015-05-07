@@ -18,7 +18,7 @@ object S3Utils {
 
   val log = LoggerFactory.getLogger(getClass)
 
-  def getFiles(bucketName: String, inputKey: String, accessKey: String, secretAccessKey: String):List[(Int, String)] = {
+  def getFiles(bucketName: String, accessKey: String, secretAccessKey: String):List[(Int, String)] = {
 
     val s3Client: AmazonS3Client = getS3Client(accessKey, secretAccessKey)
 
@@ -30,7 +30,6 @@ object S3Utils {
 
       val listObjectsRequest = new ListObjectsRequest()
         .withBucketName(bucketName)
-        .withPrefix(inputKey)
        var objectListing: ObjectListing = null
 
       do {
@@ -76,7 +75,7 @@ object S3Utils {
         val s3object = s3Client.getObject(new GetObjectRequest(bucketName, key))
         inputStream = s3object.getObjectContent
 
-        val outputPath = outputFolder + Path.SEPARATOR + key.substring(key.lastIndexOf(Path.SEPARATOR) + 1)
+        val outputPath = outputFolder + Path.SEPARATOR + key
         log.info(s"Writing file to: $outputPath")
 
         val conf = new Configuration();

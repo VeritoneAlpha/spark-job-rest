@@ -148,10 +148,11 @@ var sparkJobTemplate = function () {
             for(var i = 0; i < response.length; i++) {
                 output += '<tr>' +
                             '<td>' +  response[i].contextName + '</td>' +
-                            '<td>' +  response[i].sparkUiPort + '</td>' +
+                            '<td>' +  '<a href=' + Self.params.host + ':' + response[i].sparkUiPort + '>' + response[i].sparkUiPort + '</a>' + '</td>' +
                             '<td><a class="delete" data-context="'+ response[i].contextName +'"><span class="glyphicon glyphicon-trash" aria-hidden="true"></span></a></td>' +
                         '</tr>';
             }
+            console.log(Self.params.host);
 
             ctxTable.html(output);
         });
@@ -668,7 +669,8 @@ $(function() {
     try {
         sparkJob = new sparkJobTemplate();
         sparkJob.init({
-            url: "http://127.0.0.1:8097/"
+            url: "http://127.0.0.1:8097/",
+            host: "http://127.0.0.1"
         });
     } catch (e) {
         errorHandler(e.message);
