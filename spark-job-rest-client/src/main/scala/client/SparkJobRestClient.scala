@@ -291,7 +291,7 @@ class SparkJobRestClient(serverAddress: String)(implicit system: ActorSystem) {
   }
 
   @throws(classOf[Exception])
-  def uploadJar(jarName: String, jarPath: String) : Boolean = {
+  def uploadJar(jarName: String, jarPath: String) : JarInfo = {
 
     val pipeline: HttpRequest => Future[JarInfo] = sendReceive ~> unmarshal[JarInfo]
 
@@ -302,7 +302,7 @@ class SparkJobRestClient(serverAddress: String)(implicit system: ActorSystem) {
     Await.ready(response, Duration.create(30, TimeUnit.SECONDS)).value.get match {
 
       case Success(jarInfo: JarInfo) => {
-        return true
+        return jarInfo
       }
       case Failure(e: UnsuccessfulResponseException) => {
         log.error("Unsuccessful response: ", e)
@@ -315,7 +315,7 @@ class SparkJobRestClient(serverAddress: String)(implicit system: ActorSystem) {
 
     }
 
-    false
+    null
   }
 
   def createParametersString(parameters: Map[String, String]): String = {

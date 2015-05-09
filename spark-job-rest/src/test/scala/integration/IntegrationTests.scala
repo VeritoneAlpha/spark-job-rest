@@ -8,7 +8,6 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{Matchers, BeforeAndAfter, FunSuite}
 import org.scalatest.junit.JUnitRunner
 import responses.Job
-import server.Main
 
 /**
 * Created by raduchilom on 4/25/15.
@@ -84,8 +83,8 @@ class IntegrationTests extends FunSuite with BeforeAndAfter with ScalaFutures wi
   }
 
   test("Upload Jar") {
-    val uploadFlag = client.uploadJar("example-job.jar", exampleJarPath)
-    uploadFlag should be(true)
+    val jarInfo = client.uploadJar("example-job.jar", exampleJarPath)
+    jarInfo.name should be("example-job.jar")
   }
 
 }

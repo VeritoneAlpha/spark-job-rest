@@ -20,6 +20,6 @@ class SparkJobImplemented extends SparkJob
   }
 
   override def validate(sc: SparkContext, config: Config): SparkJobValidation = {
-    if(config.hasPath("input")) SparkJobValid() else SparkJobInvalid("The \"input\" parameter is missing.")
+    if(config.hasPath("input")) SparkJobValid() else SparkJobInvalid("The input parameter is missing.")
   }
 }
