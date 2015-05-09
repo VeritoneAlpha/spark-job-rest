@@ -470,7 +470,7 @@ var sparkJobTemplate = function () {
 
         jarsTable.on('click','.delete', function() {
             var this_ = $(this),
-                ctx = this_.data('job');
+                ctx = this_.data('jar');
 
             Self.deleteJar(ctx).done(function(data) {
                 Self.notifySuccess('Deleted jar: ' + ctx);
