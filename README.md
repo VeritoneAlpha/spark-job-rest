@@ -278,3 +278,8 @@ Context(testContext,16002)
 Job(ab63c19f-bbb4-461e-8c6f-f0a35f73a943,testContext,Running,,1430291077689)
 Job(ab63c19f-bbb4-461e-8c6f-f0a35f73a943,testContext,Finished,10,1430291078694)
 ```
+
+
+## UI
+
+The UI was added in a compiled and minified state. For sources and changes please refer to [spark-job-rest-ui](https://github.com/marianbanita82/spark-job-rest-ui) project.

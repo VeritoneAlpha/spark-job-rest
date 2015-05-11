@@ -291,18 +291,18 @@ class SparkJobRestClient(serverAddress: String)(implicit system: ActorSystem) {
   }
 
   @throws(classOf[Exception])
-  def uploadJar(jarName: String, jarPath: String) : Boolean = {
+  def uploadJar(jarName: String, jarPath: String) : JarInfo = {
 
-    val pipeline: HttpRequest => Future[SimpleMessage] = sendReceive ~> unmarshal[SimpleMessage]
+    val pipeline: HttpRequest => Future[JarInfo] = sendReceive ~> unmarshal[JarInfo]
 
     val body = MultipartFormData(Seq(BodyPart(new File(jarPath), jarName, MediaTypes.`application/java-archive`)))
 
-    val response: Future[SimpleMessage] = pipeline(Post(serverAddress + jarsRoute , body))
+    val response: Future[JarInfo] = pipeline(Post(serverAddress + jarsRoute , body))
 
     Await.ready(response, Duration.create(30, TimeUnit.SECONDS)).value.get match {
 
-      case Success(simpleMessage: SimpleMessage) => {
-        return true
+      case Success(jarInfo: JarInfo) => {
+        return jarInfo
       }
       case Failure(e: UnsuccessfulResponseException) => {
         log.error("Unsuccessful response: ", e)
@@ -315,7 +315,7 @@ class SparkJobRestClient(serverAddress: String)(implicit system: ActorSystem) {
 
     }
 
-    false
+    null
   }
 
   def createParametersString(parameters: Map[String, String]): String = {

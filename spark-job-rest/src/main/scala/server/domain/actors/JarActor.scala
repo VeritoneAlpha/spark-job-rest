@@ -54,7 +54,14 @@ class JarActor(config: Config) extends Actor {
         }
         FileUtils.writeToFile(jarName, jarFolder, bytes)
       } match {
-        case Success(v) => sender ! Success("Jar successfully saved.")
+        case Success(v) => {
+          val fileJar = new File(jarFolder + File.separator + jarName)
+          if(fileJar.exists()) {
+            sender ! Success(JarInfo(jarName, fileJar.length(), fileJar.lastModified()))
+          } else {
+            sender ! Failure(new Exception("Jar was wrote to disk."))
+          }
+        }
         case Failure(e) => sender ! Failure(e)
       }
     }
