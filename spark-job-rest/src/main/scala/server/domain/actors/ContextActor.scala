@@ -143,8 +143,12 @@ class ContextActor(localConfig: Config) extends Actor {
   }
 
   def gracefullyShutdown {
+    log.info("[gracefullyShutdown] shutting down context")
     Option(sparkContext).foreach(_.stop())
+    log.info("[gracefullyShutdown] shutting actor context")
     context.system.shutdown()
+    log.info("[gracefullyShutdown] calling system exit")
+    System.exit(0)
   }
 
   def startWatchingManagerActor() = {
