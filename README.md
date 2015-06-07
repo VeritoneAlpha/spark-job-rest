@@ -1,3 +1,5 @@
+[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/Atigeo/spark-job-rest?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+
 ## Features:
 
 **Supports multiple spark contexts created from the same server**
