@@ -2,6 +2,8 @@
 
 ## Features:
 
+[![Join the chat at https://gitter.im/Atigeo/spark-job-rest](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/Atigeo/spark-job-rest?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 **Supports multiple spark contexts created from the same server**
 
 The main problem this project solves is the inability to run multiple Spark contexts from the same JVM. This is a bug in Spark core that was also present in Ooyala's Spark Job Server, from which this project is inspired. The project launches a new process for each Spark context/application, with its own driver memory setting and its own driver log. Each driver JVM is created with its own Spark UI port, sent back to the api caller. Inter-process communication is achieved with akka actors, and each process is shut down when a Spark context/application is deleted.
