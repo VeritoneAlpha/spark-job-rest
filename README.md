@@ -10,7 +10,7 @@ The main problem this project solves is the inability to run multiple Spark cont
 
 The project is build with Maven3 and Java7.
 ```
-mvn clean install
+make build
 ```
 SJR can now be deployed from spark-job-rest/spark-job-rest/target/spark-job-rest.tar.gz
 
@@ -39,6 +39,43 @@ If running from IDE fails with:
 Exception in thread "main" java.lang.NoClassDefFoundError: akka/actor/Props
 ```
 This happens because the spark dependency has the provided scope. In order to run from IDE you can remove the provided scope for the spark dependency(inside pom.xml) or you can add the spark assembly jar to the running classpath.
+
+## Deploying Spark-Job-Rest
+
+You can deploy Spark-Job-Rest by:
+```
+make deploy
+```
+which currently supports only local deploy.
+
+Optionally you can specify deploy directory in `$SJR_DEPLOY_PATH` environment variable:
+```
+SJR_DEPLOY_PATH=/opt/spark-job-rest make deploy
+```
+
+In order to have a make proper installation you should set `$SPARK_HOME` to your Apache Spark distribution and `$SPARK_CONF_HOME` to directory which consists `spark-env.sh` (usually `$SPARK_HOME/conf` or `$SPARK_HOME/libexec/conf`).
+You can do it in your bash profile (`~/.bash_profile` or `~/.bashrc`) by adding the following lines:
+```
+export SPARK_HOME=<Path to Apache Spark>
+export SPARK_CONF_HOME=$SPARK_HOME/libexec/conf
+```
+
+To reinstall application or install it at remote host run `$SJR_DEPLOY_PATH/resources/install.sh` it will set proper directory paths.
+ 
+## Starting Spark-Job-Rest
+
+To start/stop SJR use
+```
+cd $SJR_DEPLOY_PATH
+bin/start_server.sh
+bin/stop_server.sh
+```
+
+or if it deployed to default destination just
+```
+make start
+make stop
+```
 
 ## Configure Spark-job-rest
 
