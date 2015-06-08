@@ -65,7 +65,7 @@ web.services.port=8097
 
 Also, SPARK_HOME variable must be edited in the settings.sh file. It must be pointed to the local Spark deployment folder. The SJR can be run from outside the Spark cluster, but you need to at least copy the deployment folder from one of the slaves or master nodes.
 
-For the UI to work, the file spark-job-rest/src/main/resources/webapp/js/behaviour.js must be edited in order to set the URL and the host of the machine where you are running the server. The UI can be accessed at URL/index .
+For the UI to work, the file spark-job-rest/src/main/resources/webapp/js/behaviour.js must be edited in order to set the URL and the host of the machine where you are running the server. The UI can be accessed at serverAddress:serverPort/ .
 
 ## Run Spark-job-rest
 
