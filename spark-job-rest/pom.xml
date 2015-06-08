@@ -314,7 +314,6 @@
 							<tasks>
 								<chmod file="${basedir}/target/temp_build/bin/main-server.sh"
 									perm="ugo+rx" />
-
 								<chmod file="${basedir}/src/main/scripts/start_server.sh"
 									perm="ugo+rx" />
                                 <chmod file="${basedir}/src/main/scripts/stop_server.sh"
@@ -323,7 +322,8 @@
                                        perm="ugo+rx" />
                                 <chmod file="${basedir}/target/temp_build/resources/context_start.sh"
                                        perm="ugo+rx" />
-
+                                <chmod file="${basedir}/target/temp_build/resources/install.sh"
+                                       perm="ugo+rx" />
 							</tasks>
 						</configuration>
 					</execution>

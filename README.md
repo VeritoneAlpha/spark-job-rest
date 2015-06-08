@@ -59,6 +59,7 @@ You can do it in your bash profile (`~/.bash_profile` or `~/.bashrc`) by adding 
 export SPARK_HOME=<Path to Apache Spark>
 export SPARK_CONF_HOME=$SPARK_HOME/libexec/conf
 ```
+After that either run in the new terminal session or source your bash profile.
 
 To reinstall application or install it at remote host run `$SJR_DEPLOY_PATH/resources/install.sh` it will set proper directory paths.
  
