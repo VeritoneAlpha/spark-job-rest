@@ -17,7 +17,7 @@ import utils.ActorUtils
 import scala.collection.mutable.{SynchronizedMap, HashMap}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.util.{Failure, Success}
+import scala.util.{Try, Failure, Success}
 
 /**
  * Created by raduc on 04/11/14.
@@ -82,6 +82,7 @@ class ContextActor(localConfig: Config) extends Actor {
       jobStateMap += (job.uuid -> JobStarted())
 
       Future {
+        Try {
           val classLoader = Thread.currentThread.getContextClassLoader
           val runnableClass = classLoader.loadClass(job.runningClass)
           val sparkJob = runnableClass.newInstance.asInstanceOf[SparkJob]
@@ -93,11 +94,20 @@ class ContextActor(localConfig: Config) extends Actor {
           }
 
           sparkJob.runJob(sparkContext, job.config.withFallback(defaultConfig))
-
+        }
       } andThen {
-        case Success(result) => {
-          log.info(s"Finished running job : runningClass=${job.runningClass} contextName=${job.contextName} uuid=${job.uuid} ")
-          jobStateMap += (job.uuid -> JobRunSuccess(gsonTransformer.toJson(result)))
+        case Success(futureResult) => futureResult match {
+          case Success(result) => {
+            log.info(s"Finished running job : runningClass=${job.runningClass} contextName=${job.contextName} uuid=${job.uuid} ")
+            jobStateMap += (job.uuid -> JobRunSuccess(gsonTransformer.toJson(result)))
+          }
+          case Failure(e:Throwable) => {
+            jobStateMap += (job.uuid -> JobRunError(ExceptionUtils.getStackTrace(e)))
+            log.error(s"Error running job : runningClass=${job.runningClass} contextName=${job.contextName} uuid=${job.uuid} ", e)
+          }
+          case x:Any => {
+            log.error("Reiceived ANY from running job !!! " + x)
+          }
         }
         case Failure(e:Throwable) => {
           jobStateMap += (job.uuid -> JobRunError(ExceptionUtils.getStackTrace(e)))
