@@ -170,7 +170,7 @@ Maven Spark-Job-Rest-Client dependency:
 <dependency>
     <groupId>com.xpatterns</groupId>
     <artifactId>spark-job-rest-client</artifactId>
-    <version>0.3.0</version>
+    <version>0.3.1</version>
 </dependency>
 ```
 
@@ -181,7 +181,7 @@ Add maven Spark-Job-Rest-Api dependency:
 <dependency>
     <groupId>com.xpatterns</groupId>
     <artifactId>spark-job-rest-api</artifactId>
-    <version>0.3.0</version>
+    <version>0.3.1</version>
 </dependency>
 ```
 
