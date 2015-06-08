@@ -36,10 +36,18 @@
 	</properties>
 
 	<dependencies>
+
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-core_2.10</artifactId>
+            <version>1.3.1</version>
+            <scope>provided</scope>
+        </dependency>
+
         <dependency>
             <groupId>com.xpatterns</groupId>
             <artifactId>spark-job-rest-api</artifactId>
-            <version>0.3.0</version>
+            <version>0.3.1-spark1.3.1</version>
         </dependency>
 
         <dependency>
@@ -99,13 +107,6 @@
 			<artifactId>log4j</artifactId>
 			<version>1.2.17</version>
 		</dependency>
-
-        <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-core_2.10</artifactId>
-            <version>1.3.1</version>
-            <scope>provided</scope>
-        </dependency>
 
         <dependency>
             <groupId>com.typesafe</groupId>
@@ -176,9 +177,10 @@
         </dependency>
 
         <dependency>
+            <scope>test</scope>
             <groupId>com.xpatterns</groupId>
             <artifactId>spark-job-rest-client</artifactId>
-            <version>0.3.0</version>
+            <version>0.3.1</version>
         </dependency>
 	</dependencies>
 
