@@ -45,7 +45,7 @@ import spray.httpx.SprayJsonSupport.sprayJsonMarshaller
 
   log.info("Started web service.")
 
-  def indexRoute: Route = pathPrefix("index"){
+  def indexRoute: Route = pathPrefix(""){
     pathEnd {
       get {
         getFromResource("webapp/index.html")
