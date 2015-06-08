@@ -82,7 +82,7 @@ export SPARK_HOME
 # job server jar needs to appear first so its deps take higher priority
 # need to explicitly include app dir in classpath so logging configs can be found
 #CLASSPATH="$appdir:$appdir/spark-job-server.jar:$($SPARK_HOME/bin/compute-classpath.sh)"
-CLASSPATH="$parentdir/resources:$appdir:$parentdir/spark-job-rest.jar:$($SPARK_HOME/bin/compute-classpath.sh):$classpathParam"
+CLASSPATH="$parentdir/resources:$appdir:$parentdir/spark-job-rest.jar:$classpathParam:$($SPARK_HOME/bin/compute-classpath.sh)"
 echo $CLASSPATH
 
 exec java -cp $CLASSPATH $GC_OPTS $JAVA_OPTS $LOGGING_OPTS $CONFIG_OVERRIDES $MAIN $conffile $classpathParam $contextName $port > /dev/null 2>&1  &
