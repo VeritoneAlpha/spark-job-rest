@@ -76,7 +76,7 @@ function exec_cmd() {
 function stop_server() {
     echo "Stopping server"
     exec_cmd "if [ -d ${SJR_DEPLOY_PATH} ]; then ${SJR_DEPLOY_PATH}/bin/stop_server.sh; fi"
-    exec_cmd "pkill -f spark-job-rest"
+    exec_cmd "pkill -f 'java.*spark-job-rest.jar'" || true
 }
 
 function remove_server() {
