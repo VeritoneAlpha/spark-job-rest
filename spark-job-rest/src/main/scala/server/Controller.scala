@@ -23,8 +23,8 @@ import spray.httpx.SprayJsonSupport.sprayJsonMarshaller
 /**
  * Created by raduc on 03/11/14.
  */
-  class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor: ActorRef, jarActor: ActorRef, originalSystem: ActorSystem)
-    extends SimpleRoutingApp with CORSDirectives{
+class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor: ActorRef, jarActor: ActorRef, originalSystem: ActorSystem)
+  extends SimpleRoutingApp with CORSDirectives{
 
   implicit val system = originalSystem
   implicit val timeout = Timeout(60000)
