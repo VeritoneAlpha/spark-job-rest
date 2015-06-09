@@ -85,6 +85,8 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef) extends Act
               case result:ResultJarsPathForAll => {
 
                 val processBuilder = createProcessBuilder(contextName, port, result.pathForClasspath, mergedConfig)
+                val command = processBuilder.command().toArray.mkString(" ")
+                log.info(s"Starting new process for context $contextName: '$command'")
                 processMap += contextName -> processBuilder.start()
 
                 val host = getValueFromConfig(defaultConfig, ActorUtils.HOST_PROPERTY_NAME, "127.0.0.1")
