@@ -704,8 +704,8 @@ $(function() {
     try {
         sparkJob = new sparkJobTemplate();
         sparkJob.init({
-            url: "http://127.0.0.1:8097/",
-            host: "http://127.0.0.1"
+            url: $(location).attr('origin') + '/',
+            host: $(location).attr('protocol') + '//' + $(location).attr('hostname') + '/'
         });
     } catch (e) {
         errorHandler(e.message);
