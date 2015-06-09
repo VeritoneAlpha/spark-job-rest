@@ -62,7 +62,7 @@ In order to have a proper installation you should set `$SPARK_HOME` to your Apac
 You can do it in your bash profile (`~/.bash_profile` or `~/.bashrc`) by adding the following lines:
 ```
 export SPARK_HOME=<Path to Apache Spark>
-export SPARK_CONF_HOME=$SPARK_HOME/libexec/conf
+export SPARK_CONF_HOME=$SPARK_HOME/libexec/conf  # or $SPARK_HOME/conf depending on your distribution
 ```
 After that either run in the new terminal session or source your bash profile.
 
