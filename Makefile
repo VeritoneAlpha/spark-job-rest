@@ -22,7 +22,7 @@ SJR_DEPLOY_KEY ?=
 # Remote deployment parameters
 #
 REMOTE_PARAMS := SJR_DEPLOY_PATH=$(SJR_DEPLOY_PATH) \
-				 SJR_DEPLOY_HOST=$(SJR_DEPLOY_HOST) \
+                 SJR_DEPLOY_HOST=$(SJR_DEPLOY_HOST) \
                  SJR_DEPLOY_KEY=$(SJR_DEPLOY_KEY) \
                  SJR_PACKAGE_PATH=$(PACKAGE_PATH) \
                  SJR_IS_REMOTE_DEPLOY="true" \
