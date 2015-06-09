@@ -227,9 +227,20 @@ An example for this project can be found here: ```spark-job-rest/examples/exampl
 mvn clean install
 ```
 
+**Upload JAR**
+```sh
+# In the project root directory
+curl --data-binary @spark-job-rest/examples/example-job/target/example-job.jar 'localhost:8097/jars/example-job.jar'
+
+{
+  "contextName": "test-context",
+  "sparkUiPort": "16003"
+}
+```
+
 **Create a context**
 ```sh
-curl -X POST -d "jars=/Users/raduc/projects/spark-job-rest/examples/example-job/target/example-job.jar" 'localhost:8097/contexts/test-context'
+curl -X POST -d "jars=example-job.jar" 'localhost:8097/contexts/test-context'
 
 {
   "contextName": "test-context",
