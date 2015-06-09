@@ -49,18 +49,16 @@ This happens because the spark dependency has the provided scope. In order to ru
 
 ## Deploying Spark-Job-Rest
 
-You can deploy Spark-Job-Rest by:
+You can deploy Spark-Job-Rest locally to `deploy` directory inside the project by:
 ```
 make deploy
 ```
-which currently supports only local deploy.
-
-Optionally you can specify deploy directory in `$SJR_DEPLOY_PATH` environment variable:
+Optionally you can specifying install directory in `$SJR_DEPLOY_PATH` environment variable:
 ```
 SJR_DEPLOY_PATH=/opt/spark-job-rest make deploy
 ```
 
-In order to have a make proper installation you should set `$SPARK_HOME` to your Apache Spark distribution and `$SPARK_CONF_HOME` to directory which consists `spark-env.sh` (usually `$SPARK_HOME/conf` or `$SPARK_HOME/libexec/conf`).
+In order to have a proper installation you should set `$SPARK_HOME` to your Apache Spark distribution and `$SPARK_CONF_HOME` to directory which consists `spark-env.sh` (usually `$SPARK_HOME/conf` or `$SPARK_HOME/libexec/conf`).
 You can do it in your bash profile (`~/.bash_profile` or `~/.bashrc`) by adding the following lines:
 ```
 export SPARK_HOME=<Path to Apache Spark>
@@ -68,7 +66,28 @@ export SPARK_CONF_HOME=$SPARK_HOME/libexec/conf
 ```
 After that either run in the new terminal session or source your bash profile.
 
-To reinstall application or install it at remote host run `$SJR_DEPLOY_PATH/resources/install.sh` it will set proper directory paths.
+To reinstall application or install it at arbitrary location run
+```
+$SJR_DEPLOY_PATH/resources/install.sh`
+```
+and it will set proper directory paths.
+
+### Deploying to remote host
+
+You can deploy Spark-Job-REST to remote host via:
+```
+make remote-deploy
+```
+
+For remote deployment you should set following environment variables:
+```
+# Mandatory connection string
+export SJR_DEPLOY_HOST=<user@hostname for remote machine>
+# Optional parameters
+export SJR_DEPLOY_KEY=<optional path to your SSH key>
+export SJR_REMOTE_DEPLOY_PATH=<where you want to install Spark-Job-REST on remote host>
+```
+If `SJR_REMOTE_DEPLOY_PATH` is not set then `SJR_DEPLOY_PATH` will be used during remote deploy.
  
 ## Starting Spark-Job-Rest
 
