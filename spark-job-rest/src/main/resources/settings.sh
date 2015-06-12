@@ -4,7 +4,7 @@ CDIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 APP_DIR="${CDIR}/../"
 
 if [ -z "${SPARK_HOME}" ]; then
-    SPARK_HOME="/opt/apache-spark"
+    SPARK_HOME="/opt/spark"
 fi
 
 if [ -z "${SPARK_CONF_HOME}" ]; then
