@@ -46,6 +46,9 @@ remote-start:
 remote-stop:
 	@$(REMOTE_PARAMS) $(CURRENT_DIR)/spark-job-rest/src/main/scripts/deploy.sh stop
 
+remote-log:
+	@$(REMOTE_PARAMS) $(CURRENT_DIR)/spark-job-rest/src/main/scripts/deploy.sh log
+
 start:
 	@echo "Starting spark-job-REST..."; \
 	cd $(SJR_DEPLOY_PATH); \

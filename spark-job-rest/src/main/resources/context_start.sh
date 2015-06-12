@@ -16,6 +16,7 @@ classpathParam=$1
 contextName=$2
 port=$3
 xmxMemory=$4
+processDir=$5
 
 echo "classpathParam = $classpathParam"
 echo "contextName = $contextName"
@@ -52,17 +53,9 @@ if [ -z "$SPARK_HOME" ]; then
   exit 1
 fi
 
-if [ -z "$SPARK_CONF_HOME" ]; then
-  SPARK_CONF_HOME=$SPARK_HOME/conf
-fi
-
 # Pull in other env vars in spark config, such as MESOS_NATIVE_LIBRARY
 . $SPARK_CONF_HOME/spark-env.sh
 
-if [ -z "$LOG_DIR" ]; then
-  LOG_DIR=$parentdir/logs
-  echo "LOG_DIR empty; logging will go to $LOG_DIR"
-fi
 mkdir -p $LOG_DIR
 
 LOGGING_OPTS="-Dlog4j.configuration=log4j.properties
@@ -80,6 +73,7 @@ fi
 export SPARK_HOME
 export APP_DIR
 export JAR_PATH
+export CONTEXTS_BASE_DIR
 
 # job server jar needs to appear first so its deps take higher priority
 # need to explicitly include app dir in classpath so logging configs can be found
@@ -87,4 +81,9 @@ export JAR_PATH
 CLASSPATH="$parentdir/resources:$appdir:$parentdir/spark-job-rest.jar:$classpathParam:$EXTRA_CLASSPATH:$($SPARK_HOME/bin/compute-classpath.sh)"
 echo $CLASSPATH
 
+# Create context process directory
+mkdir -p "$processDir"
+
+pushd "$processDir"
 exec java -cp $CLASSPATH $GC_OPTS $JAVA_OPTS $LOGGING_OPTS $CONFIG_OVERRIDES $MAIN $conffile $classpathParam $contextName $port > /dev/null 2>&1  &
+popd

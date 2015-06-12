@@ -31,3 +31,5 @@ dependency-reduced-pom.xml
 /deploy
 **/resources/deploy.conf
 **/resources/deploy-settings.sh
+# TODO: Implement basic fairscheduler config
+**/resources/fairscheduler.xml

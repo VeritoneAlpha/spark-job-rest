@@ -133,6 +133,7 @@ You may configure folders by setting environment variables and by creating and e
 ```sh
 export SJR_LOG_DIR=<path to logs directory>
 export SJR_JAR_PATH=<path to jar files storage>
+export SJR_CONTEXTS_BASE_DIR=<path to the rood directory for contexts process directories>
 export JSR_EXTRA_CLASSPATH=<additional classes required for your application to run>
 ```
 

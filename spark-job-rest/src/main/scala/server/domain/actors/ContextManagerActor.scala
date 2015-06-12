@@ -212,7 +212,10 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef) extends Act
 
     val xmxMemory = getValueFromConfig(config, "driver.xmxMemory", "1g")
 
-    val pb = new ProcessBuilder(scriptPath, jarsForClasspath, contextName, port.toString, xmxMemory)
+    // Create context process directory
+    val processDirName = new java.io.File(defaultConfig.getString("context.contexts-base-dir")).toString + s"/$contextName"
+
+    val pb = new ProcessBuilder(scriptPath,jarsForClasspath, contextName, port.toString, xmxMemory, processDirName)
     pb.redirectOutput(Redirect.INHERIT)
     pb.redirectError(Redirect.INHERIT)
   }
