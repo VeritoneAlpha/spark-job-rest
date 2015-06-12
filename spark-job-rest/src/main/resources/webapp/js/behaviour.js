@@ -705,7 +705,7 @@ $(function() {
         sparkJob = new sparkJobTemplate();
         sparkJob.init({
             url: $(location).attr('origin') + '/',
-            host: $(location).attr('protocol') + '//' + $(location).attr('hostname') + '/'
+            host: $(location).attr('protocol') + '//' + $(location).attr('hostname')
         });
     } catch (e) {
         errorHandler(e.message);
