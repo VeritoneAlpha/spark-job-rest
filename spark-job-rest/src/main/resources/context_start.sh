@@ -25,7 +25,7 @@ echo "port = $port"
 GC_OPTS="-XX:+UseConcMarkSweepGC
          -verbose:gc -XX:+PrintGCTimeStamps -Xloggc:$appdir/gc.out
          -XX:MaxPermSize=512m
-         -XX:+CMSClassUnloadingEnabled "
+         -XX:+CMSClassUnloadingEnabled"
 
 JAVA_OPTS="-Xmx$xmxMemory -XX:MaxDirectMemorySize=512M
            -XX:+HeapDumpOnOutOfMemoryError -Djava.net.preferIPv4Stack=true
@@ -76,13 +76,15 @@ if [ "$PORT" != "" ]; then
   CONFIG_OVERRIDES+="-Dspark.jobserver.port=$PORT "
 fi
 
-# This needs to be exported for standalone mode so drivers can connect to the Spark cluster
+# The following should be exported in order to be accessible in Config substitutions
 export SPARK_HOME
+export APP_DIR
+export JAR_PATH
 
 # job server jar needs to appear first so its deps take higher priority
 # need to explicitly include app dir in classpath so logging configs can be found
 #CLASSPATH="$appdir:$appdir/spark-job-server.jar:$($SPARK_HOME/bin/compute-classpath.sh)"
-CLASSPATH="$parentdir/resources:$appdir:$parentdir/spark-job-rest.jar:$classpathParam:$($SPARK_HOME/bin/compute-classpath.sh)"
+CLASSPATH="$parentdir/resources:$appdir:$parentdir/spark-job-rest.jar:$classpathParam:$EXTRA_CLASSPATH:$($SPARK_HOME/bin/compute-classpath.sh)"
 echo $CLASSPATH
 
 exec java -cp $CLASSPATH $GC_OPTS $JAVA_OPTS $LOGGING_OPTS $CONFIG_OVERRIDES $MAIN $conffile $classpathParam $contextName $port > /dev/null 2>&1  &

@@ -317,8 +317,6 @@
                                        perm="ugo+rx" />
                                 <chmod file="${basedir}/target/temp_build/resources/context_start.sh"
                                        perm="ugo+rx" />
-                                <chmod file="${basedir}/target/temp_build/resources/install.sh"
-                                       perm="ugo+rx" />
 							</tasks>
 						</configuration>
 					</execution>

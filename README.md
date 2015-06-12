@@ -58,6 +58,8 @@ Optionally you can specifying install directory in `$SJR_DEPLOY_PATH` environmen
 SJR_DEPLOY_PATH=/opt/spark-job-rest make deploy
 ```
 
+Before running JSR ensure that [working environment](#configure-spark-environment) is configured.
+
 In order to have a proper installation you should set `$SPARK_HOME` to your Apache Spark distribution and `$SPARK_CONF_HOME` to directory which consists `spark-env.sh` (usually `$SPARK_HOME/conf` or `$SPARK_HOME/libexec/conf`).
 You can do it in your bash profile (`~/.bash_profile` or `~/.bashrc`) by adding the following lines:
 ```sh
@@ -65,12 +67,6 @@ export SPARK_HOME=<Path to Apache Spark>
 export SPARK_CONF_HOME=$SPARK_HOME/libexec/conf  # or $SPARK_HOME/conf depending on your distribution
 ```
 After that either run in the new terminal session or source your bash profile.
-
-To reinstall application or install it at arbitrary location run
-```sh
-$SJR_DEPLOY_PATH/resources/install.sh`
-```
-and it will set proper directory paths.
 
 ### Deploying to remote host
 
@@ -106,34 +102,68 @@ make stop
 
 ## Configure Spark-job-rest
 
-In order to configure SJR the following file needs to be edited: resources/application.conf
+Spark-Job-REST default configuration is stored in `resources/application.conf` (here and after under `spark-job-rest/src/main/`).
+To add or override settings create `resources/deploy.conf` (ignored by VCS).
 
-* Configure the default spark properties for context creation
+### Spark context settings
+Configure the default spark properties for context creation as they are normal Spark configuration options
 ```
-#spark default configuration
 spark.executor.memory=2g
 spark.master="local"
 spark.path="/Users/user/spark-1.1.0"
-#Default Spark Driver JVM memory
-driver.xmxMemory = 1g
-```
-* Configure settings like web server port and akka system ports
-```
-#application configuration
-appConf{
-#the port on which to deploy the apis
-web.services.port=8097
 ........
+```
+To set how much memory should be allocated for driver use `driver.xmxMemory` (default is `1g`).
+
+### Application settings
+
+Configure settings like web server port and akka system ports
+```
+appConf{
+  web.services.port=8097
+  spark.ui.first.port = 16000
+  ........
 }
 ```
 
-Also, SPARK_HOME variable must be edited in the settings.sh file. It must be pointed to the local Spark deployment folder. The SJR can be run from outside the Spark cluster, but you need to at least copy the deployment folder from one of the slaves or master nodes.
+### Configure folders & class paths
 
-For the UI to work, the file spark-job-rest/src/main/resources/webapp/js/behaviour.js must be edited in order to set the URL and the host of the machine where you are running the server. The UI can be accessed at serverAddress:serverPort/ .
+You may configure folders by setting environment variables and by creating and editing `resources/deploy-settings.sh` (under `spark-job-rest/src/main/`):
+
+```sh
+export SJR_LOG_DIR=<path to logs directory>
+export SJR_JAR_PATH=<path to jar files storage>
+export JSR_EXTRA_CLASSPATH=<additional classes required for your application to run>
+```
+
+### Java & GC options
+
+You can extend or override Java and GC options in `resources/deploy-settings.sh`:
+
+```sh
+JAVA_OPTS="${JAVA_OPTS}
+           ${YOUR_EXTRA_JAVA_OPTIONS}"
+GC_OPTS="${GC_OPTS}
+         ${YOUR_EXTRA_GC_OPTIONS}"           
+```
+
+## Configure Spark environment
+
+In order to have a proper installation you should set `$SPARK_HOME` to your Apache Spark distribution and `$SPARK_CONF_HOME` to directory which consists `spark-env.sh` (usually `$SPARK_HOME/conf` or `$SPARK_HOME/libexec/conf`).
+You can do it in your bash profile (`~/.bash_profile` or `~/.bashrc`) by adding the following lines:
+```sh
+export SPARK_HOME=<Path to Apache Spark>
+export SPARK_CONF_HOME=$SPARK_HOME/libexec/conf  # or $SPARK_HOME/conf depending on your distribution
+```
+After that either run in the new terminal session or source your bash profile.
+
+The SJR can be run from outside the Spark cluster, but you need to at least copy the deployment folder from one of the slaves or master nodes.
 
 ## Run Spark-job-rest
 
-After editing all the configuration files SJR can be run by executing the script : start-server.sh
+After editing all the configuration files SJR can be run by executing the script `start-server.sh`
+
+The UI can be accessed at `<server address>:<appConf.web.services.port>`.
 
 ## API
 

@@ -18,7 +18,9 @@ object Main {
 
     LoggingOutputStream.redirectConsoleOutput
 
-    val defaultConfig = ConfigFactory.load()
+    // Loads deployment configuration `deploy.conf` on top of application defaults `application.conf`
+    val defaultConfig = ConfigFactory.load("deploy").withFallback(ConfigFactory.load())
+
     val masterConfig = defaultConfig.getConfig("manager")
     val system = ActorSystem("ManagerSystem", masterConfig)
 

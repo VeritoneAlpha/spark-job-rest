@@ -102,17 +102,12 @@ function extract_package() {
     fi
 }
 
-function extract_and_install() {
-    extract_package
-    exec_cmd "${SJR_DEPLOY_PATH}/resources/install.sh"
-}
-
 function deploy_server() {
     echo "Deploing to ${SJR_DEPLOY_HOST}:${SJR_DEPLOY_PATH}"
     stop_server
     remove_server
     upload_tarball
-    extract_and_install
+    extract_package
     start_server
 }
 

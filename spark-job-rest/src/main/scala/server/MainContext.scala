@@ -24,7 +24,7 @@ object MainContext {
 
     log.info(s"Started new process for contextName = $contextName with port = $port")
 
-    val defaultConfig = ConfigFactory.load()
+    val defaultConfig = ConfigFactory.load("deploy").withFallback(ConfigFactory.load())
     val config = ActorUtils.remoteConfig("localhost", port, defaultConfig)
     val system = ActorSystem(ActorUtils.PREFIX_CONTEXT_SYSTEM + contextName, config)
 
