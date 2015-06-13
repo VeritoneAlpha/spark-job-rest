@@ -315,7 +315,11 @@ var sparkJobTemplate = function () {
 
                 for(var i = 0; i < response.length; i++) {
                     if(response[i].status !== 'Running') {
-                        result = '<a class="details" data-result="'+ response[i].result +'"><span aria-hidden="true" class="glyphicon glyphicon-modal-window"></span></a>';
+                        result =
+                            '<a class="details">' +
+                            '<span aria-hidden="true" class="glyphicon glyphicon-modal-window"></span>' +
+                            '<div style="display:none" class="data">' + response[i].result + '</div>' +
+                            '</a>';
                     } else {
                         result = '';
                     }
@@ -333,8 +337,8 @@ var sparkJobTemplate = function () {
 
 
         jobsTable.on('click','.details', function() {
-            var this_ = $(this),
-                result = this_.data('result')+'';
+            var $this = $(this),
+                result = $this.select('#data').text() + '';
 
             if(result) {
                 bootbox.alert(result);
