@@ -1,33 +1,32 @@
 package server
 
-import akka.actor.{ActorSelection, ActorSystem, ActorRef}
+import akka.actor.{ActorRef, ActorSystem}
+import akka.pattern.ask
 import akka.util.Timeout
 import com.typesafe.config.{Config, ConfigFactory}
 import org.slf4j.LoggerFactory
 import responses._
+import server.domain.actors.ContextActor.FailedInit
+import server.domain.actors.ContextManagerActor._
 import server.domain.actors.JarActor._
-import server.domain.actors.{JobActor, ContextManagerActor, ContextActor}
-import ContextActor.{FailedInit}
-import ContextManagerActor._
-import JobActor._
-import spray.http._
-import spray.routing.{Route, SimpleRoutingApp}
-import akka.pattern.ask
+import server.domain.actors.JobActor._
 import server.domain.actors.getValueFromConfig
-
-import scala.concurrent.ExecutionContext
-import scala.util.{Try, Failure, Success}
-import ExecutionContext.Implicits.global
+import spray.http._
 import spray.httpx.SprayJsonSupport.sprayJsonMarshaller
+import spray.routing.{Route, SimpleRoutingApp}
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
+import scala.util.{Failure, Success, Try}
 
 /**
- * Created by raduc on 03/11/14.
+ * Spark-Job-REST HTTP service for Web UI and REST API.
  */
 class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor: ActorRef, jarActor: ActorRef, originalSystem: ActorSystem)
   extends SimpleRoutingApp with CORSDirectives{
 
   implicit val system = originalSystem
-  implicit val timeout = Timeout(60000)
+  implicit val timeout: Timeout = 60 seconds
 
   val log = LoggerFactory.getLogger(getClass)
   log.info("Starting web service.")
@@ -39,11 +38,15 @@ class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor:
   val webIp = getValueFromConfig(config, "appConf.web.services.ip", "0.0.0.0")
   val webPort = getValueFromConfig(config, "appConf.web.services.port", 8097)
 
+  val route = jobRoute ~ contextRoute ~ indexRoute ~ jarRoute
 
-  val route = jobRoute  ~ contextRoute ~ indexRoute ~ jarRoute
-  startServer(webIp, webPort) (route)
-
-  log.info("Started web service.")
+  startServer(webIp, webPort) (route) map {
+    case bound => log.info(s"Started web service: $bound")
+  } onFailure {
+    case e: Exception =>
+      log.error("Failed to start Spark-Job-REST web service", e)
+      throw e
+  }
 
   def indexRoute: Route = pathPrefix(""){
     pathEnd {
@@ -137,7 +140,7 @@ class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor:
               Try{
                 ConfigFactory.parseString(configString)
               } match {
-                case Success(requestConfig) => {
+                case Success(requestConfig) =>
                   val resultFuture = jobManagerActor ? RunJob(runningClass, context, requestConfig)
                   resultFuture.map {
                     case job: Job => ctx.complete(StatusCodes.OK, job)
@@ -145,7 +148,6 @@ class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor:
                     case e: Exception => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
                     case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
                   }
-                }
                 case Failure(e) => ctx.complete(StatusCodes.BadRequest, ErrorResponse("Invalid parameter: " + e.getMessage))
               }
             }
@@ -171,7 +173,7 @@ class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor:
               Try{
                 ConfigFactory.parseString(configString)
               } match {
-                case Success(requestConfig) => {
+                case Success(requestConfig) =>
                   val resultFuture = contextManagerActor ? CreateContext(contextName, getValueFromConfig(requestConfig, "jars", ""), requestConfig)
                   resultFuture.map {
                     case context:Context => ctx.complete(StatusCodes.OK, context)
@@ -180,7 +182,6 @@ class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor:
                     case e: Throwable => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
                     case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
                   }
-                }
                 case Failure(e) => ctx.complete(StatusCodes.BadRequest, ErrorResponse("Invalid parameters: " + e.getMessage))
               }
 
@@ -262,18 +263,16 @@ class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor:
           corsFilter(List("*")) {
             respondWithMediaType(MediaTypes.`application/json`) { ctx =>
               formData.fields.foreach {
-                case bodyPart: BodyPart => {
+                case bodyPart: BodyPart =>
                   val resultFuture = jarActor ? AddJar(bodyPart.filename.get, bodyPart.entity.data.toByteArray)
                   resultFuture.map {
                     case Success(jarInfo: JarInfo) => ctx.complete(StatusCodes.OK, jarInfo)
-                    case Failure(e) =>  {
+                    case Failure(e) =>
                       log.error("Error uploading jar: ", e)
                       ctx.complete(StatusCodes.BadRequest, "")
-                    }
                     case x: Any => ctx.complete(StatusCodes.InternalServerError, "")
-//                      The empty message is due to a bug on the Ui File Upload part. When fixed used ErrorResponse(e.getMessage)
+                    // TODO: Message is empty due to a bug on the Ui File Upload part. When fixed used ErrorResponse(e.getMessage)
                   }
-                }
               }
             }
           }
