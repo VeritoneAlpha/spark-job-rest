@@ -148,6 +148,19 @@ GC_OPTS="${GC_OPTS}
          ${YOUR_EXTRA_GC_OPTIONS}"           
 ```
 
+## Custom contexts
+
+Spark-Job-REST supports custom job context factories defined in `context.job-context-factory`.
+By default SJR uses `context.SparkContextFactory` which creates one Spark Context per JVM.
+
+### SQL contexts
+
+To run jobs with provided SQL contexts include `spark-job-rest-sql` in your project, set context factory to one of SQLContext factories provided by this library and inherit your job from `api.SparkSqlJob`.
+Currently supported contexts:
+
+1. `context.SparkSqlContextFactory` creates simple job SQLContext.
+2. `context.HiveContextFactory` creates Hive SQL context.
+
 ## Configure Spark environment
 
 In order to have a proper installation you should set `$SPARK_HOME` to your Apache Spark distribution and `$SPARK_CONF_HOME` to directory which consists `spark-env.sh` (usually `$SPARK_HOME/conf` or `$SPARK_HOME/libexec/conf`).

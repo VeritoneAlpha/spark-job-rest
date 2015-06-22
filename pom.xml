@@ -4,7 +4,7 @@
 
 	<groupId>com.xpatterns</groupId>
 	<artifactId>spark-job-REST</artifactId>
-	<version>0.3.0</version>
+	<version>0.3.2</version>
 	<packaging>pom</packaging>
 
 	<name>spark-job-REST</name>
@@ -12,6 +12,7 @@
 
 	<modules>
 		<module>spark-job-rest-api</module>
+		<module>spark-job-rest-sql</module>
 		<module>spark-job-rest</module>
         <module>spark-job-rest-client</module>
 		<module>examples/example-job</module>

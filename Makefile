@@ -50,13 +50,11 @@ remote-log:
 	@$(REMOTE_PARAMS) $(CURRENT_DIR)/spark-job-rest/src/main/scripts/deploy.sh log
 
 start:
-	@echo "Starting spark-job-REST..."; \
-	cd $(SJR_DEPLOY_PATH); \
-	bin/start_server.sh
+	@SJR_DEPLOY_PATH=$(SJR_DEPLOY_PATH) \
+    $(CURRENT_DIR)/spark-job-rest/src/main/scripts/deploy.sh start
 
 stop:
-	@echo "Stopping spark-job-REST..."; \
-	cd $(SJR_DEPLOY_PATH); \
-	bin/stop_server.sh
+	@SJR_DEPLOY_PATH=$(SJR_DEPLOY_PATH) \
+    $(CURRENT_DIR)/spark-job-rest/src/main/scripts/deploy.sh stop
 
 .PHONY: all build deploy

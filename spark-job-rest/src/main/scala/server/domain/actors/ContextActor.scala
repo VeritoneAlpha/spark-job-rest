@@ -1,17 +1,18 @@
 package server.domain.actors
 
 import akka.actor.{Actor, Terminated}
-import api.{SparkJob, SparkJobInvalid, SparkJobValid}
+import api._
 import com.google.gson.Gson
-import com.typesafe.config.Config
+import com.typesafe.config.{Config, ConfigValueFactory}
+import context.JobContextFactory
 import org.apache.commons.lang.exception.ExceptionUtils
-import org.apache.spark.SparkContext
 import org.slf4j.LoggerFactory
 import responses.{Job, JobStates}
 import server.domain.actors.ContextActor._
 import server.domain.actors.JobActor._
 import utils.ActorUtils
 
+import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -29,13 +30,13 @@ object ContextActor {
 
 /**
  * Context actor responsible for creation and managing Spark Context
- * @param localConfig context's config
+ * @param localConfig config of the context application
  */
 class ContextActor(localConfig: Config) extends Actor {
   import context.become
 
   val log = LoggerFactory.getLogger(getClass)
-  var sparkContext: SparkContext = _
+  var jobContext: ContextLike = _
   var defaultConfig: Config = _
   var jobStateMap = new mutable.HashMap[String, JobStatus]() with mutable.SynchronizedMap[String, JobStatus]
 
@@ -58,9 +59,8 @@ class ContextActor(localConfig: Config) extends Actor {
       name = contextName
 
       try {
-        defaultConfig = config
-        val sparkConf = configToSparkConf(config, contextName, jarsForSpark)
-        sparkContext = new SparkContext(sparkConf)
+        defaultConfig = config.withValue("context.jars", ConfigValueFactory.fromAnyRef(jarsForSpark.asJava))
+        jobContext = JobContextFactory.makeContext(defaultConfig, name)
 
         sender ! Initialized()
         log.info("Successfully initialized context " + contextName)
@@ -85,39 +85,44 @@ class ContextActor(localConfig: Config) extends Actor {
 
       gracefullyShutdown()
 
-    case job: RunJob =>
-      log.info(s"Received RunJob message : runningClass=${job.runningClass} contextName=${job.contextName} uuid=${job.uuid} ")
-      jobStateMap += (job.uuid -> JobStarted())
+    case RunJob(runningClass, contextName, jobConfig, uuid) =>
+      log.info(s"Received RunJob message : runningClass=$runningClass contextName=$contextName uuid=$uuid ")
+      jobStateMap += (uuid -> JobStarted())
 
       Future {
         Try {
           val classLoader = Thread.currentThread.getContextClassLoader
-          val runnableClass = classLoader.loadClass(job.runningClass)
-          val sparkJob = runnableClass.newInstance.asInstanceOf[SparkJob]
+          val runnableClass = classLoader.loadClass(runningClass)
+          val sparkJob = runnableClass.newInstance.asInstanceOf[SparkJobBase]
 
-          val status = sparkJob.validate(sparkContext, job.config.withFallback(defaultConfig))
-          status match {
-            case SparkJobInvalid(message) => throw new Exception(message)
-            case SparkJobValid() => log.info("Validation passed.")
+          jobContext.validateJob(sparkJob) match {
+            case SparkJobValid() => log.info(s"Job $uuid passed context validation.")
+            case SparkJobInvalid(message) => throw new IllegalArgumentException(s"Invalid job $uuid: $message")
           }
 
-          sparkJob.runJob(sparkContext, job.config.withFallback(defaultConfig))
+          val jobConfigValidation = sparkJob.validate(jobContext.asInstanceOf[sparkJob.C], jobConfig.withFallback(defaultConfig))
+          jobConfigValidation match {
+            case SparkJobInvalid(message) => throw new IllegalArgumentException(message)
+            case SparkJobValid() => log.info("Job config validation passed.")
+          }
+
+          sparkJob.runJob(jobContext.asInstanceOf[sparkJob.C], jobConfig.withFallback(defaultConfig))
         }
       } andThen {
         case Success(futureResult) => futureResult match {
           case Success(result) =>
-            log.info(s"Finished running job : runningClass=${job.runningClass} contextName=${job.contextName} uuid=${job.uuid} ")
-            jobStateMap += (job.uuid -> JobRunSuccess(gsonTransformer.toJson(result)))
+            log.info(s"Finished running job : runningClass=$runningClass contextName=$contextName uuid=$uuid ")
+            jobStateMap += (uuid -> JobRunSuccess(gsonTransformer.toJson(result)))
           case Failure(e: Throwable) =>
-            jobStateMap += (job.uuid -> JobRunError(ExceptionUtils.getStackTrace(e)))
-            log.error(s"Error running job : runningClass=${job.runningClass} contextName=${job.contextName} uuid=${job.uuid} ", e)
-          case x:Any =>
-            log.error("Reiceived ANY from running job !!! " + x)
+            jobStateMap += (uuid -> JobRunError(ExceptionUtils.getStackTrace(e)))
+            log.error(s"Error running job : runningClass=$runningClass contextName=$contextName uuid=$uuid ", e)
+          case x: Any =>
+            log.error("Received ANY from running job !!! " + x)
         }
 
         case Failure(e: Throwable) =>
-          jobStateMap += (job.uuid -> JobRunError(ExceptionUtils.getStackTrace(e)))
-          log.error(s"Error running job : runningClass=${job.runningClass} contextName=${job.contextName} uuid=${job.uuid} ", e)
+          jobStateMap += (uuid -> JobRunError(ExceptionUtils.getStackTrace(e)))
+          log.error(s"Error running job : runningClass=$runningClass contextName=$contextName uuid=$uuid ", e)
 
         case x: Any =>
           log.error("Received ANY from running job !!! " + x)
@@ -154,7 +159,7 @@ class ContextActor(localConfig: Config) extends Actor {
   }
 
   def gracefullyShutdown() {
-    Option(sparkContext).foreach(_.stop())
+    Option(jobContext).foreach(_.stop())
     context.system.shutdown()
   }
 

@@ -1,9 +1,8 @@
 package responses
 
 /**
- * Created by raduchilom on 4/24/15.
+ * States of Spark jobs.
  */
-
 object JobStates {
 
   sealed abstract class JobState(val name: String) {
@@ -15,5 +14,7 @@ object JobStates {
   case object ERROR extends JobState("Error")
 
   case object FINISHED extends JobState("Finished")
+
+  case object QUEUED extends JobState("Queued")
 
 }

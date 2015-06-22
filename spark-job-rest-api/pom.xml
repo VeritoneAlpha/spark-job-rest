@@ -4,7 +4,7 @@
 
 	<groupId>com.xpatterns</groupId>
 	<artifactId>spark-job-rest-api</artifactId>
-	<version>0.3.1</version>
+	<version>0.3.2</version>
 	<packaging>jar</packaging>
 
 	<name>spark-job-rest-api</name>
@@ -13,12 +13,14 @@
     <description>The API for Spark-Job-Rest.
         Contains the SparkJob interface that must be extended in order to run jobs on the server.
     </description>
+
     <licenses>
         <license>
             <name>The Apache License, Version 2.0</name>
             <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
         </license>
     </licenses>
+
     <developers>
         <developer>
             <name>Radu Chilom</name>
@@ -27,6 +29,7 @@
             <organizationUrl>http://www.atigeo.com</organizationUrl>
         </developer>
     </developers>
+
     <scm>
         <connection>scm:git:git@github.com:Atigeo/spark-job-rest.git</connection>
         <developerConnection>scm:git:git@github.com:Atigeo/spark-job-rest.git</developerConnection>
@@ -58,6 +61,7 @@
             <url>https://repository.cloudera.com/artifactory/repo/</url>
         </repository>
 	</repositories>
+
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<scala.version>2.10.3</scala.version>
@@ -77,7 +81,6 @@
             <version>1.2.6</version>
         </dependency>
 	</dependencies>
-
 
     <build>
         <resources>
@@ -129,9 +132,7 @@
                     </execution>
                 </executions>
             </plugin>
-
         </plugins>
-
     </build>
 
     <profiles>
