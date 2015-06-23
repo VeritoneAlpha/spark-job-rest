@@ -43,19 +43,11 @@ if [ -z "$SPARK_HOME" ]; then
   exit 1
 fi
 
-if [ -z "$SPARK_CONF_HOME" ]; then
-  SPARK_CONF_HOME=$SPARK_HOME/conf
-fi
-
 # Pull in other env vars in spark config, such as MESOS_NATIVE_LIBRARY
 . $SPARK_CONF_HOME/spark-env.sh
 
 
-if [ -z "$LOG_DIR" ]; then
-  LOG_DIR="$parentdir/logs"
-  echo "LOG_DIR empty; logging will go to $LOG_DIR"
-fi
-mkdir -p $LOG_DIR
+mkdir -p "${LOG_DIR}"
 
 LOGGING_OPTS="-Dlog4j.configuration=log4j.properties
               -DLOG_DIR=$LOG_DIR
@@ -68,8 +60,11 @@ if [ -n "$PORT" ]; then
   CONFIG_OVERRIDES+="-Dspark.jobserver.port=$PORT "
 fi
 
-# This needs to be exported for standalone mode so drivers can connect to the Spark cluster
+# The following should be exported in order to be accessible in Config substitutions
 export SPARK_HOME
+export APP_DIR
+export JAR_PATH
+export CONTEXTS_BASE_DIR
 
 # job server jar needs to appear first so its deps take higher priority
 # need to explicitly include app dir in classpath so logging configs can be found

@@ -26,18 +26,18 @@ If your build fails with this error:
 [ERROR] spark-job-rest/src/main/scala/server/domain/actors/ContextManagerActor.scala:171: error: value redirectOutput is not a member of ProcessBuilder
 ```
 This happens because Maven uses Java6. You can run mvn -version in order to check the Java version that Maven uses.
-```
+```sh
 $ mvn -version
 Apache Maven 3.2.5
 Java version: 1.6.0_65
 ```
 If Maven uses Java6 you need to change it to Java7. This can be done by adding the JAVA_HOME export in your ~/.mavenrc file:
-```
-OSX:
+```sh
+# OSX:
 export JAVA_HOME=/Library/Java/JavaVirtualMachines/{jdk-version}/Contents/Home
 ```
-```
-Ubuntu:
+```sh
+# Ubuntu:
 export JAVA_HOME=/usr/lib/jvm/{jdk-version}
 ```
 
@@ -49,72 +49,122 @@ This happens because the spark dependency has the provided scope. In order to ru
 
 ## Deploying Spark-Job-Rest
 
-You can deploy Spark-Job-Rest by:
-```
+You can deploy Spark-Job-Rest locally to `deploy` directory inside the project by:
+```sh
 make deploy
 ```
-which currently supports only local deploy.
-
-Optionally you can specify deploy directory in `$SJR_DEPLOY_PATH` environment variable:
-```
+Optionally you can specifying install directory in `$SJR_DEPLOY_PATH` environment variable:
+```sh
 SJR_DEPLOY_PATH=/opt/spark-job-rest make deploy
 ```
 
-In order to have a make proper installation you should set `$SPARK_HOME` to your Apache Spark distribution and `$SPARK_CONF_HOME` to directory which consists `spark-env.sh` (usually `$SPARK_HOME/conf` or `$SPARK_HOME/libexec/conf`).
+Before running JSR ensure that [working environment](#configure-spark-environment) is configured.
+
+In order to have a proper installation you should set `$SPARK_HOME` to your Apache Spark distribution and `$SPARK_CONF_HOME` to directory which consists `spark-env.sh` (usually `$SPARK_HOME/conf` or `$SPARK_HOME/libexec/conf`).
 You can do it in your bash profile (`~/.bash_profile` or `~/.bashrc`) by adding the following lines:
-```
+```sh
 export SPARK_HOME=<Path to Apache Spark>
-export SPARK_CONF_HOME=$SPARK_HOME/libexec/conf
+export SPARK_CONF_HOME=$SPARK_HOME/libexec/conf  # or $SPARK_HOME/conf depending on your distribution
 ```
 After that either run in the new terminal session or source your bash profile.
 
-To reinstall application or install it at remote host run `$SJR_DEPLOY_PATH/resources/install.sh` it will set proper directory paths.
+### Deploying to remote host
+
+You can deploy Spark-Job-REST to remote host via:
+```sh
+make remote-deploy
+```
+
+For remote deployment you should set following environment variables:
+```sh
+# Mandatory connection string
+export SJR_DEPLOY_HOST=<user@hostname for remote machine>
+# Optional parameters
+export SJR_DEPLOY_KEY=<optional path to your SSH key>
+export SJR_REMOTE_DEPLOY_PATH=<where you want to install Spark-Job-REST on remote host>
+```
+If `SJR_REMOTE_DEPLOY_PATH` is not set then `SJR_DEPLOY_PATH` will be used during remote deploy.
  
 ## Starting Spark-Job-Rest
 
 To start/stop SJR use
-```
+```sh
 cd $SJR_DEPLOY_PATH
 bin/start_server.sh
 bin/stop_server.sh
 ```
 
 or if it deployed to default destination just
-```
+```sh
 make start
 make stop
 ```
 
 ## Configure Spark-job-rest
 
-In order to configure SJR the following file needs to be edited: resources/application.conf
+Spark-Job-REST default configuration is stored in `resources/application.conf` (here and after under `spark-job-rest/src/main/`).
+To add or override settings create `resources/deploy.conf` (ignored by VCS).
 
-* Configure the default spark properties for context creation
-``` 
-#spark default configuration
+### Spark context settings
+Configure the default spark properties for context creation as they are normal Spark configuration options
+```
 spark.executor.memory=2g
 spark.master="local"
 spark.path="/Users/user/spark-1.1.0"
-#Default Spark Driver JVM memory
-driver.xmxMemory = 1g
-```
-* Configure settings like web server port and akka system ports
-```
-#application configuration
-appConf{
-#the port on which to deploy the apis
-web.services.port=8097
 ........
+```
+To set how much memory should be allocated for driver use `driver.xmxMemory` (default is `1g`).
+
+### Application settings
+
+Configure settings like web server port and akka system ports
+```
+appConf{
+  web.services.port=8097
+  spark.ui.first.port = 16000
+  ........
 }
 ```
 
-Also, SPARK_HOME variable must be edited in the settings.sh file. It must be pointed to the local Spark deployment folder. The SJR can be run from outside the Spark cluster, but you need to at least copy the deployment folder from one of the slaves or master nodes.
+### Configure folders & class paths
 
-For the UI to work, the file spark-job-rest/src/main/resources/webapp/js/behaviour.js must be edited in order to set the URL and the host of the machine where you are running the server. The UI can be accessed at serverAddress:serverPort/ .
+You may configure folders by setting environment variables and by creating and editing `resources/deploy-settings.sh` (under `spark-job-rest/src/main/`):
+
+```sh
+export SJR_LOG_DIR=<path to logs directory>
+export SJR_JAR_PATH=<path to jar files storage>
+export SJR_CONTEXTS_BASE_DIR=<path to the rood directory for contexts process directories>
+export JSR_EXTRA_CLASSPATH=<additional classes required for your application to run>
+```
+
+### Java & GC options
+
+You can extend or override Java and GC options in `resources/deploy-settings.sh`:
+
+```sh
+JAVA_OPTS="${JAVA_OPTS}
+           ${YOUR_EXTRA_JAVA_OPTIONS}"
+GC_OPTS="${GC_OPTS}
+         ${YOUR_EXTRA_GC_OPTIONS}"           
+```
+
+## Configure Spark environment
+
+In order to have a proper installation you should set `$SPARK_HOME` to your Apache Spark distribution and `$SPARK_CONF_HOME` to directory which consists `spark-env.sh` (usually `$SPARK_HOME/conf` or `$SPARK_HOME/libexec/conf`).
+You can do it in your bash profile (`~/.bash_profile` or `~/.bashrc`) by adding the following lines:
+```sh
+export SPARK_HOME=<Path to Apache Spark>
+export SPARK_CONF_HOME=$SPARK_HOME/libexec/conf  # or $SPARK_HOME/conf depending on your distribution
+```
+After that either run in the new terminal session or source your bash profile.
+
+The SJR can be run from outside the Spark cluster, but you need to at least copy the deployment folder from one of the slaves or master nodes.
 
 ## Run Spark-job-rest
 
-After editing all the configuration files SJR can be run by executing the script : start-server.sh
+After editing all the configuration files SJR can be run by executing the script `start-server.sh`
+
+The UI can be accessed at `<server address>:<appConf.web.services.port>`.
 
 ## API
 
@@ -129,7 +179,7 @@ After editing all the configuration files SJR can be run by executing the script
     * Hdfs path : hdfs://devbox.local:8020/user/test/example.jar
   
   ``` 
-  Body example:
+ # Body example:
  jars="/home/ubuntu/example.jar,example.jar,hdfs://devbox.local:8020/user/test/example.jar”
  spark.executor.memory=2g
  driver.xmxMemory = 1g
@@ -166,7 +216,7 @@ After editing all the configuration files SJR can be run by executing the script
 All the API methods can be called from Scala/Java with the help of an HTTP Client.
 
 Maven Spark-Job-Rest-Client dependency:
-```
+```xml
 <dependency>
     <groupId>com.xpatterns</groupId>
     <artifactId>spark-job-rest-client</artifactId>
@@ -177,7 +227,7 @@ Maven Spark-Job-Rest-Client dependency:
 ## Create Spark Job Project
 
 Add maven Spark-Job-Rest-Api dependency:
-```
+```xml
 <dependency>
     <groupId>com.xpatterns</groupId>
     <artifactId>spark-job-rest-api</artifactId>
@@ -187,7 +237,7 @@ Add maven Spark-Job-Rest-Api dependency:
 
 To create a job that can be submitted through the server, the class must implement the SparkJob trait.
 
-```
+```scala
 import com.typesafe.config.Config
 import org.apache.spark.SparkContext
 import api.{SparkJobInvalid, SparkJobValid, SparkJobValidation, SparkJob}
@@ -204,11 +254,24 @@ class Example extends SparkJob {
 ## Example
 
 An example for this project can be found here: ```spark-job-rest/examples/example-job```. In order to package it, run 
-``` mvn clean install ```
+```sh
+mvn clean install
+```
+
+**Upload JAR**
+```sh
+# In the project root directory
+curl --data-binary @spark-job-rest/examples/example-job/target/example-job.jar 'localhost:8097/jars/example-job.jar'
+
+{
+  "contextName": "test-context",
+  "sparkUiPort": "16003"
+}
+```
 
 **Create a context**
-```
-$ curl -X POST -d "jars=/Users/raduc/projects/spark-job-rest/examples/example-job/target/example-job.jar" 'localhost:8097/contexts/test-context'
+```sh
+curl -X POST -d "jars=example-job.jar" 'localhost:8097/contexts/test-context'
 
 {
   "contextName": "test-context",
@@ -218,7 +281,7 @@ $ curl -X POST -d "jars=/Users/raduc/projects/spark-job-rest/examples/example-jo
 
 **Check if context exists**
 
-```
+```sh
 curl 'localhost:8097/contexts/test-context'
 
 {
@@ -229,8 +292,8 @@ curl 'localhost:8097/contexts/test-context'
 
 **Run job** - The example job creates an RDD from a Range(0,input) and applies count on it.
 
-```
-$ curl -X POST -d "input=10000" 'localhost:8097/jobs?runningClass=com.job.SparkJobImplemented&contextName=test-context'
+```sh
+curl -X POST -d "input=10000" 'localhost:8097/jobs?runningClass=com.job.SparkJobImplemented&contextName=test-context'
 
 {
   "jobId": "2bd438a2-ac1e-401a-b767-5fa044b2bd69",
@@ -245,8 +308,8 @@ $ curl -X POST -d "input=10000" 'localhost:8097/jobs?runningClass=com.job.SparkJ
 
 **Query for results**
 
-```
-$ curl 'localhost:8097/jobs/2bd438a2-ac1e-401a-b767-5fa044b2bd69?contextName=test-context'
+```sh
+curl 'localhost:8097/jobs/2bd438a2-ac1e-401a-b767-5fa044b2bd69?contextName=test-context'
 
 {
   "jobId": "2bd438a2-ac1e-401a-b767-5fa044b2bd69",
@@ -259,7 +322,7 @@ $ curl 'localhost:8097/jobs/2bd438a2-ac1e-401a-b767-5fa044b2bd69?contextName=tes
 
 **Delete context**
 
-```
+```sh
 curl -X DELETE 'localhost:8097/contexts/test-context'
 
 {
@@ -269,7 +332,7 @@ curl -X DELETE 'localhost:8097/contexts/test-context'
 
 **HTTP Client Example**
 
-```
+```scala
 object Example extends App {
   implicit val system = ActorSystem()
   val contextName = "testContext"

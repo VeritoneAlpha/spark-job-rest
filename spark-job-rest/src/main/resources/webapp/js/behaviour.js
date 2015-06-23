@@ -315,7 +315,11 @@ var sparkJobTemplate = function () {
 
                 for(var i = 0; i < response.length; i++) {
                     if(response[i].status !== 'Running') {
-                        result = '<a class="details" data-result="'+ response[i].result +'"><span aria-hidden="true" class="glyphicon glyphicon-modal-window"></span></a>';
+                        result =
+                            '<a class="details">' +
+                            '<span aria-hidden="true" class="glyphicon glyphicon-modal-window"></span>' +
+                            '<div style="display:none" class="data">' + response[i].result + '</div>' +
+                            '</a>';
                     } else {
                         result = '';
                     }
@@ -333,8 +337,8 @@ var sparkJobTemplate = function () {
 
 
         jobsTable.on('click','.details', function() {
-            var this_ = $(this),
-                result = this_.data('result')+'';
+            var $this = $(this),
+                result = $this.select('#data').text() + '';
 
             if(result) {
                 bootbox.alert(result);
@@ -704,8 +708,8 @@ $(function() {
     try {
         sparkJob = new sparkJobTemplate();
         sparkJob.init({
-            url: "http://127.0.0.1:8097/",
-            host: "http://127.0.0.1"
+            url: $(location).attr('origin') + '/',
+            host: $(location).attr('protocol') + '//' + $(location).attr('hostname')
         });
     } catch (e) {
         errorHandler(e.message);
