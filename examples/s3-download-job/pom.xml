@@ -37,21 +37,25 @@
             <artifactId>httpclient</artifactId>
             <version>4.3.4</version>
         </dependency>
+		
         <dependency>
             <groupId>com.xpatterns</groupId>
             <artifactId>spark-job-rest-api</artifactId>
-            <version>0.3.1-spark1.3.1</version>
+            <version>0.3.2</version>
         </dependency>
+		
         <dependency>
             <groupId>com.xpatterns</groupId>
             <artifactId>spark-job-rest-client</artifactId>
             <version>0.3.1</version>
         </dependency>
+
         <dependency>
             <groupId>com.amazonaws</groupId>
             <artifactId>aws-java-sdk</artifactId>
             <version>1.8.3</version>
         </dependency>
+		
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-core_2.10</artifactId>

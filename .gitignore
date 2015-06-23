@@ -33,3 +33,4 @@ dependency-reduced-pom.xml
 **/resources/deploy-settings.sh
 # TODO: Implement basic fairscheduler config
 **/resources/fairscheduler.xml
+metastore_db
