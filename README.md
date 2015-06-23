@@ -150,7 +150,7 @@ GC_OPTS="${GC_OPTS}
 
 ## Custom contexts
 
-Spark-Job-REST supports custom job context factories defined in `context.job-context-factory`.
+Spark-Job-REST supports custom job context factories defined in `context.job-context-factory` property of config.
 By default SJR uses `context.SparkContextFactory` which creates one Spark Context per JVM.
 
 ### SQL contexts

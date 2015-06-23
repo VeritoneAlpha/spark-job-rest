@@ -3,8 +3,7 @@ package context
 import api.ContextLike
 import com.typesafe.config.Config
 import org.slf4j.LoggerFactory
-
-import scala.util.Try
+import server.domain.actors.getValueFromConfig
 
 trait JobContextFactory {
   type C <: ContextLike
@@ -45,8 +44,6 @@ object JobContextFactory {
    * @return
    */
   def getFactory(config: Config): JobContextFactory =
-    getFactory(Try {
-      config.getString(classNameConfigEntry)
-    }.getOrElse(defaultFactoryClassName))
+    getFactory(getValueFromConfig(config, classNameConfigEntry, defaultFactoryClassName))
 }
 
