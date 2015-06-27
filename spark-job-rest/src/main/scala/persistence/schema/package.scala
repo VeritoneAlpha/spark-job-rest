@@ -68,10 +68,7 @@ package object schema {
      */
     implicit val jarsColumnType = MappedColumnType.base[Jars, String](
     { jars: Jars => jars.list.mkString(":") },
-    {
-      case "" => Jars()
-      case jarsString: String => Jars(jarsString.split(":").toList)
-    }
+    { string: String => Jars.fromString(string) }
     )
   }
 }

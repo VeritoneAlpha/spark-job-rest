@@ -24,6 +24,21 @@ import persistence.schema.ContextState._
 case class Jars(list: List[String] = Nil)
 
 /**
+ * Companion object methods for [[Jars]]
+ */
+object Jars {
+  /**
+   * Loads [[Jars]] from string
+   * @param repr JARSs as string
+   * @return deserialized Jars
+   */
+  def fromString(repr: String): Jars = repr match {
+    case "" => Jars()
+    case jarsString: String => Jars(jarsString.split(":").toList)
+  }
+}
+
+/**
  * Context entity
  * @param id context id
  * @param name context name
