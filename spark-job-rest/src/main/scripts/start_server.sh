@@ -65,6 +65,7 @@ export SPARK_HOME
 export APP_DIR
 export JAR_PATH
 export CONTEXTS_BASE_DIR
+export DATABASE_ROOT_DIR
 
 # job server jar needs to appear first so its deps take higher priority
 # need to explicitly include app dir in classpath so logging configs can be found

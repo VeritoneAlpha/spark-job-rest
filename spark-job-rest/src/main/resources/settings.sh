@@ -29,5 +29,8 @@ EXTRA_CLASSPATH="${JSR_EXTRA_CLASSPATH}"
 # Set proper jar path
 JAR_PATH=${SJR_JAR_PATH-"${APP_DIR}/jars"}
 
+# Set database root directory
+DATABASE_ROOT_DIR=${SJR_DATABASE_ROOT_DIR-"${APP_DIR}/db"}
+
 # Root location for contexts process directories
 CONTEXTS_BASE_DIR=${SJR_CONTEXTS_BASE_DIR-"${APP_DIR}/contexts"}
