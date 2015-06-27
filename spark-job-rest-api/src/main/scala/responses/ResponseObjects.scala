@@ -2,57 +2,53 @@ package responses
 
 import spray.json.DefaultJsonProtocol._
 
-/**
- * Created by raduc on 24/04/15.
- */
+case class Context(contextName: String, sparkUiPort: String)
 
-  case class Context(contextName: String, sparkUiPort: String)
+object Context {
+  implicit val logJson = jsonFormat2(apply)
+}
 
-  object Context {
-    implicit val logJson = jsonFormat2(apply)
-  }
+case class Contexts(contexts: Array[Context])
 
-  case class Contexts(contexts: Array[Context])
+object Contexts {
+  implicit val logJson = jsonFormat1(apply)
+}
 
-  object Contexts {
-    implicit val logJson = jsonFormat1(apply)
-  }
+case class Job(jobId: String, contextName: String, status: String, result: String, startTime: Long)
 
-  case class Job(jobId: String, contextName: String, status: String, result: String, startTime: Long)
+object Job {
+  implicit val logJson = jsonFormat5(apply)
+}
 
-  object Job {
-    implicit val logJson = jsonFormat5(apply)
-  }
+case class Jobs(jobs: Array[Job])
 
-  case class Jobs(jobs: Array[Job])
+object Jobs {
+  implicit val logJson = jsonFormat1(apply)
+}
 
-  object Jobs {
-    implicit val logJson = jsonFormat1(apply)
-  }
+case class JarInfo(name: String, size: Long, timestamp: Long)
 
-  case class JarInfo(name: String, size: Long, timestamp: Long)
+object JarInfo {
+  implicit val logJson = jsonFormat3(apply)
+}
 
-  object JarInfo {
-    implicit val logJson = jsonFormat3(apply)
-  }
+case class JarsInfo(jars: Array[JarInfo])
 
-  case class JarsInfo(jars: Array[JarInfo])
+object JarsInfo {
+  implicit val logJson = jsonFormat1(apply)
+}
 
-  object JarsInfo {
-    implicit val logJson = jsonFormat1(apply)
-  }
+case class ErrorResponse(error: String)
 
-  case class ErrorResponse(error: String)
+object ErrorResponse {
+  implicit val logJson = jsonFormat1(apply)
+}
 
-  object ErrorResponse {
-    implicit val logJson = jsonFormat1(apply)
-  }
+case class SimpleMessage(message: String)
 
-  case class SimpleMessage(message: String)
-
-  object SimpleMessage {
-    implicit val logJson = jsonFormat1(apply)
-  }
+object SimpleMessage {
+  implicit val logJson = jsonFormat1(apply)
+}
 
 
 
