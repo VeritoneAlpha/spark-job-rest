@@ -28,10 +28,10 @@ case class Jars(list: List[String] = Nil)
  * @param id context id
  * @param name context name
  * @param state context state
- * @param config context config
+ * @param submittedConfig context config
  * @param jars list of JARs associated with the config
  */
-case class Context(name: String, state: ContextState, config: Config, jars: Jars, id: ID = nextId)
+case class Context(name: String, state: ContextState, submittedConfig: Config, finalConfig: Option[Config], jars: Jars, id: ID = nextId)
 
 /**
  * Contexts table is responsible for storing information about contexts
@@ -43,8 +43,9 @@ class Contexts(tag: Tag) extends Table[Context] (tag, contextsTable) {
   def id = column[ID]("CONTEXT_ID", O.PrimaryKey)
   def name = column[String]("NAME")
   def state = column[ContextState]("STATE")
-  def config = column[Config]("CONFIG", O.SqlType(configSQLType))
+  def submittedConfig = column[Config]("SUBMITTED_CONFIG", O.SqlType(configSQLType))
+  def finalConfig = column[Option[Config]]("FINAL_CONFIG", O.SqlType(configSQLType))
   def jars = column[Jars]("JARS")
 
-  def * = (name, state, config, jars, id) <> (Context.tupled, Context.unapply)
+  def * = (name, state, submittedConfig, finalConfig, jars, id) <> (Context.tupled, Context.unapply)
 }

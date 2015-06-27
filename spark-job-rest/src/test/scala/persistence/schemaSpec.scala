@@ -47,7 +47,7 @@ class schemaSpec extends WordSpec with MustMatchers with BeforeAndAfter with Tim
       insertedContext.id mustEqual context.id
       insertedContext.name mustEqual context.name
       insertedContext.state mustEqual context.state
-      insertedContext.config.getString("hero.name") mustEqual context.config.getString("hero.name")
+      insertedContext.submittedConfig.getString("hero.name") mustEqual context.submittedConfig.getString("hero.name")
       insertedContext.jars.list mustEqual context.jars.list
     }
 
@@ -69,7 +69,7 @@ class schemaSpec extends WordSpec with MustMatchers with BeforeAndAfter with Tim
       insertedJob.status mustEqual job.status
       insertedJob.runningClass mustEqual job.runningClass
       insertedJob.submittedConfig.getString("hero.name") mustEqual job.submittedConfig.getString("hero.name")
-      insertedJob.finalConfig.getString("hero.name") mustEqual job.finalConfig.getString("hero.name")
+      insertedJob.finalConfig.get.getString("hero.name") mustEqual job.finalConfig.get.getString("hero.name")
     }
   }
 }

@@ -50,5 +50,5 @@ class DatabaseServerSpec extends WordSpec with MustMatchers with BeforeAndAfter 
     }
   }
 
-  val context = Context("test context", ContextState.Running, config, Jars(List("foo", "bar")), nextId)
+  val context = Context("test context", ContextState.Running, config, None, Jars(List("foo", "bar")), nextId)
 }

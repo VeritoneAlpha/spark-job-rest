@@ -33,7 +33,7 @@ case class Job(contextId: WEAK_LINK,
                stopTime: Option[Long],
                runningClass: String,
                submittedConfig: Config,
-               finalConfig: Config,
+               finalConfig: Option[Config],
                status: JobStatus = Submitted,
                submitTime: Long = new DateTime(DateTimeZone.UTC).getMillis,
                id: ID = nextId)
@@ -51,7 +51,7 @@ class Jobs(tag: Tag) extends Table[Job] (tag, jobsTable) {
   def stopTime = column[Option[Long]]("STOP_TIME")
   def runningClass = column[String]("RUNNING_CLASS")
   def submittedConfig = column[Config]("SUBMITTED_CONFIG", O.SqlType(configSQLType))
-  def finalConfig = column[Config]("FINAL_CONFIG", O.SqlType(configSQLType))
+  def finalConfig = column[Option[Config]]("FINAL_CONFIG", O.SqlType(configSQLType))
   def status = column[JobStatus]("STATUS")
   def submitTime = column[Long]("SUBMIT_TIME")
 
