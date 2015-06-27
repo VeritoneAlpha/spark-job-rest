@@ -23,10 +23,10 @@ import scala.util.{Failure, Success, Try}
  * Spark-Job-REST HTTP service for Web UI and REST API.
  */
 class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor: ActorRef, jarActor: ActorRef, originalSystem: ActorSystem)
-  extends SimpleRoutingApp with CORSDirectives{
+  extends SimpleRoutingApp with CORSDirectives {
 
   implicit val system = originalSystem
-  implicit val timeout: Timeout = 60 seconds
+  implicit val timeout: Timeout = 60.seconds
 
   val log = LoggerFactory.getLogger(getClass)
   log.info("Starting web service.")
@@ -40,7 +40,7 @@ class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor:
 
   val route = jobRoute ~ contextRoute ~ indexRoute ~ jarRoute
 
-  startServer(webIp, webPort) (route) map {
+  startServer(webIp, webPort)(route) map {
     case bound => log.info(s"Started web service: $bound")
   } onFailure {
     case e: Exception =>
@@ -48,58 +48,57 @@ class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor:
       throw e
   }
 
-  def indexRoute: Route = pathPrefix(""){
+  def indexRoute: Route = pathPrefix("") {
     pathEnd {
       get {
         getFromResource("webapp/index.html")
       }
     } ~
-    options {
-      corsFilter(List("*"), HttpHeaders.`Access-Control-Allow-Methods`(Seq(HttpMethods.OPTIONS, HttpMethods.GET))) {
-        complete {
-          "OK"
+      options {
+        corsFilter(List("*"), HttpHeaders.`Access-Control-Allow-Methods`(Seq(HttpMethods.OPTIONS, HttpMethods.GET))) {
+          complete {
+            "OK"
+          }
         }
       }
-    }
   } ~
-  pathPrefix("assets"){
-    get {
-      getFromResourceDirectory("webapp/assets")
-    } ~ options {
-      corsFilter(List("*"), HttpHeaders.`Access-Control-Allow-Methods`(Seq(HttpMethods.OPTIONS, HttpMethods.GET))) {
-        complete {
-          "OK"
-        }
-      }
-    }
-  } ~
-  pathPrefix("js"){
-    get {
-      getFromResourceDirectory("webapp/js")
-    } ~ options {
-      corsFilter(List("*"), HttpHeaders.`Access-Control-Allow-Methods`(Seq(HttpMethods.OPTIONS, HttpMethods.GET))) {
-        complete {
-          "OK"
-        }
-      }
-    }
-  } ~
-  path("hearbeat") {
-    get {
-      complete {
-        "Spark Job Rest is up and running!"
+    pathPrefix("assets") {
+      get {
+        getFromResourceDirectory("webapp/assets")
       } ~ options {
         corsFilter(List("*"), HttpHeaders.`Access-Control-Allow-Methods`(Seq(HttpMethods.OPTIONS, HttpMethods.GET))) {
-          respondWithMediaType(MediaTypes.`application/json`) { ctx =>
-            ctx.complete(StatusCodes.OK)
+          complete {
+            "OK"
+          }
+        }
+      }
+    } ~
+    pathPrefix("js") {
+      get {
+        getFromResourceDirectory("webapp/js")
+      } ~ options {
+        corsFilter(List("*"), HttpHeaders.`Access-Control-Allow-Methods`(Seq(HttpMethods.OPTIONS, HttpMethods.GET))) {
+          complete {
+            "OK"
+          }
+        }
+      }
+    } ~
+    path("hearbeat") {
+      get {
+        complete {
+          "Spark Job Rest is up and running!"
+        } ~ options {
+          corsFilter(List("*"), HttpHeaders.`Access-Control-Allow-Methods`(Seq(HttpMethods.OPTIONS, HttpMethods.GET))) {
+            respondWithMediaType(MediaTypes.`application/json`) { ctx =>
+              ctx.complete(StatusCodes.OK)
+            }
           }
         }
       }
     }
-  }
 
-
-  def jobRoute: Route = pathPrefix("jobs"){
+  def jobRoute: Route = pathPrefix("jobs") {
     pathEnd {
       get {
         corsFilter(List("*")) {
@@ -114,47 +113,47 @@ class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor:
         }
       }
     } ~
-    get {
-      path(Segment) { jobId =>
-        parameters('contextName) { contextName =>
-          corsFilter(List("*")) {
-            respondWithMediaType(MediaTypes.`application/json`) { ctx =>
-              val resultFuture = jobManagerActor ? JobStatusEnquiry(contextName, jobId)
-              resultFuture.map {
-                case job:Job => ctx.complete(StatusCodes.OK, job)
-                case JobDoesNotExist() => ctx.complete(StatusCodes.BadRequest, ErrorResponse("JobId does not exist!"))
-                case NoSuchContext => ctx.complete(StatusCodes.BadRequest, ErrorResponse("Context does not exist!"))
-                case e: Throwable => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
-                case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
+      get {
+        path(Segment) { jobId =>
+          parameters('contextName) { contextName =>
+            corsFilter(List("*")) {
+              respondWithMediaType(MediaTypes.`application/json`) { ctx =>
+                val resultFuture = jobManagerActor ? JobStatusEnquiry(contextName, jobId)
+                resultFuture.map {
+                  case job: Job => ctx.complete(StatusCodes.OK, job)
+                  case JobDoesNotExist() => ctx.complete(StatusCodes.BadRequest, ErrorResponse("JobId does not exist!"))
+                  case NoSuchContext => ctx.complete(StatusCodes.BadRequest, ErrorResponse("Context does not exist!"))
+                  case e: Throwable => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
+                  case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
+                }
               }
             }
           }
         }
-      }
-    } ~
-    post {
-      parameters('runningClass, 'contextName) { (runningClass, context) =>
-        entity(as[String]) { configString =>
-          corsFilter(List("*")) {
-            respondWithMediaType(MediaTypes.`application/json`) { ctx =>
-              Try{
-                ConfigFactory.parseString(configString)
-              } match {
-                case Success(requestConfig) =>
-                  val resultFuture = jobManagerActor ? RunJob(runningClass, context, requestConfig)
-                  resultFuture.map {
-                    case job: Job => ctx.complete(StatusCodes.OK, job)
-                    case NoSuchContext => ctx.complete(StatusCodes.BadRequest, ErrorResponse("No such context."))
-                    case e: Exception => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
-                    case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
-                  }
-                case Failure(e) => ctx.complete(StatusCodes.BadRequest, ErrorResponse("Invalid parameter: " + e.getMessage))
+      } ~
+      post {
+        parameters('runningClass, 'contextName) { (runningClass, context) =>
+          entity(as[String]) { configString =>
+            corsFilter(List("*")) {
+              respondWithMediaType(MediaTypes.`application/json`) { ctx =>
+                Try {
+                  ConfigFactory.parseString(configString)
+                } match {
+                  case Success(requestConfig) =>
+                    val resultFuture = jobManagerActor ? RunJob(runningClass, context, requestConfig)
+                    resultFuture.map {
+                      case job: Job => ctx.complete(StatusCodes.OK, job)
+                      case NoSuchContext => ctx.complete(StatusCodes.BadRequest, ErrorResponse("No such context."))
+                      case e: Exception => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
+                      case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
+                    }
+                  case Failure(e) => ctx.complete(StatusCodes.BadRequest, ErrorResponse("Invalid parameter: " + e.getMessage))
+                }
               }
             }
           }
         }
-      }
-    } ~
+      } ~
       options {
         corsFilter(List("*"), HttpHeaders.`Access-Control-Allow-Methods`(Seq(HttpMethods.OPTIONS, HttpMethods.GET, HttpMethods.POST))) {
           complete {
@@ -162,21 +161,24 @@ class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor:
           }
         }
       }
-
   }
-    def contextRoute : Route = pathPrefix("contexts"){
+
+  def contextRoute: Route = pathPrefix("contexts") {
     post {
       path(Segment) { contextName =>
         entity(as[String]) { configString =>
           corsFilter(List("*")) {
             respondWithMediaType(MediaTypes.`application/json`) { ctx =>
-              Try{
-                ConfigFactory.parseString(configString)
+              Try {
+                // Parse and resolve context configuration.
+                // Resolve is important since we are passing config to actor with different environment:
+                // all substitutions will be applied now.
+                ConfigFactory.parseString(configString).resolve()
               } match {
                 case Success(requestConfig) =>
                   val resultFuture = contextManagerActor ? CreateContext(contextName, getValueFromConfig(requestConfig, "jars", ""), requestConfig)
                   resultFuture.map {
-                    case context:Context => ctx.complete(StatusCodes.OK, context)
+                    case context: Context => ctx.complete(StatusCodes.OK, context)
                     case e: FailedInit => ctx.complete(StatusCodes.InternalServerError, ErrorResponse("Failed Init: " + e.message))
                     case ContextAlreadyExists => ctx.complete(StatusCodes.BadRequest, ErrorResponse("Context already exists."))
                     case e: Throwable => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
@@ -191,48 +193,48 @@ class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor:
         }
       }
     } ~
-    get {
-      path(Segment) { contextName =>
-        corsFilter(List("*")) {
-          val resultFuture = contextManagerActor ? GetContextInfo(contextName)
-          respondWithMediaType(MediaTypes.`application/json`) { ctx =>
-            resultFuture.map {
-              case context: Context => ctx.complete(StatusCodes.OK, context)
-              case NoSuchContext => ctx.complete(StatusCodes.BadRequest, ErrorResponse("No such context."))
-              case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
-            }
-          }
-        }
-      }
-    } ~
-    pathEnd {
       get {
-        corsFilter(List("*")) {
-          respondWithMediaType(MediaTypes.`application/json`) { ctx =>
-            val resultFuture = contextManagerActor ? GetAllContextsForClient()
-            resultFuture.map {
-              case contexts: Contexts => ctx.complete(StatusCodes.OK, contexts)
-              case e: Exception => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
-              case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
+        path(Segment) { contextName =>
+          corsFilter(List("*")) {
+            val resultFuture = contextManagerActor ? GetContextInfo(contextName)
+            respondWithMediaType(MediaTypes.`application/json`) { ctx =>
+              resultFuture.map {
+                case context: Context => ctx.complete(StatusCodes.OK, context)
+                case NoSuchContext => ctx.complete(StatusCodes.BadRequest, ErrorResponse("No such context."))
+                case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
+              }
             }
           }
         }
-      }
-    } ~
-    delete {
-      path(Segment) { contextName =>
-        corsFilter(List("*")) {
-          val resultFuture = contextManagerActor ? DeleteContext(contextName)
-          respondWithMediaType(MediaTypes.`application/json`) { ctx =>
-            resultFuture.map {
-              case Success => ctx.complete(StatusCodes.OK, SimpleMessage("Context deleted."))
-              case NoSuchContext => ctx.complete(StatusCodes.BadRequest, ErrorResponse("No such context."))
-              case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
+      } ~
+      pathEnd {
+        get {
+          corsFilter(List("*")) {
+            respondWithMediaType(MediaTypes.`application/json`) { ctx =>
+              val resultFuture = contextManagerActor ? GetAllContextsForClient()
+              resultFuture.map {
+                case contexts: Contexts => ctx.complete(StatusCodes.OK, contexts)
+                case e: Exception => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
+                case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
+              }
             }
           }
         }
-      }
-    } ~ options {
+      } ~
+      delete {
+        path(Segment) { contextName =>
+          corsFilter(List("*")) {
+            val resultFuture = contextManagerActor ? DeleteContext(contextName)
+            respondWithMediaType(MediaTypes.`application/json`) { ctx =>
+              resultFuture.map {
+                case Success => ctx.complete(StatusCodes.OK, SimpleMessage("Context deleted."))
+                case NoSuchContext => ctx.complete(StatusCodes.BadRequest, ErrorResponse("No such context."))
+                case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
+              }
+            }
+          }
+        }
+      } ~ options {
       corsFilter(List("*"), HttpHeaders.`Access-Control-Allow-Methods`(Seq(HttpMethods.OPTIONS, HttpMethods.GET, HttpMethods.POST, HttpMethods.DELETE))) {
         complete {
           "OK"
@@ -242,7 +244,7 @@ class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor:
 
   }
 
-  def jarRoute : Route = pathPrefix("jars"){
+  def jarRoute: Route = pathPrefix("jars") {
     post {
       path(Segment) { jarName =>
         entity(as[Array[Byte]]) { jarBytes =>
@@ -258,56 +260,56 @@ class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor:
           }
         }
       } ~
-      pathEnd {
-        entity(as[MultipartFormData]) { formData =>
-          corsFilter(List("*")) {
-            respondWithMediaType(MediaTypes.`application/json`) { ctx =>
-              formData.fields.foreach {
-                case bodyPart: BodyPart =>
-                  val resultFuture = jarActor ? AddJar(bodyPart.filename.get, bodyPart.entity.data.toByteArray)
-                  resultFuture.map {
-                    case Success(jarInfo: JarInfo) => ctx.complete(StatusCodes.OK, jarInfo)
-                    case Failure(e) =>
-                      log.error("Error uploading jar: ", e)
-                      ctx.complete(StatusCodes.BadRequest, "")
-                    case x: Any => ctx.complete(StatusCodes.InternalServerError, "")
-                    // TODO: Message is empty due to a bug on the Ui File Upload part. When fixed used ErrorResponse(e.getMessage)
-                  }
+        pathEnd {
+          entity(as[MultipartFormData]) { formData =>
+            corsFilter(List("*")) {
+              respondWithMediaType(MediaTypes.`application/json`) { ctx =>
+                formData.fields.foreach {
+                  case bodyPart: BodyPart =>
+                    val resultFuture = jarActor ? AddJar(bodyPart.filename.get, bodyPart.entity.data.toByteArray)
+                    resultFuture.map {
+                      case Success(jarInfo: JarInfo) => ctx.complete(StatusCodes.OK, jarInfo)
+                      case Failure(e) =>
+                        log.error("Error uploading jar: ", e)
+                        ctx.complete(StatusCodes.BadRequest, "")
+                      case x: Any => ctx.complete(StatusCodes.InternalServerError, "")
+                      // TODO: Message is empty due to a bug on the Ui File Upload part. When fixed used ErrorResponse(e.getMessage)
+                    }
+                }
               }
             }
           }
         }
-      }
     } ~
-    delete {
-      path(Segment) { jarName =>
-        corsFilter(List("*")) {
-          val resultFuture = jarActor ? DeleteJar(jarName)
-          respondWithMediaType(MediaTypes.`application/json`) { ctx =>
-            resultFuture.map {
-              case Success(message: String) => ctx.complete(StatusCodes.OK, SimpleMessage(message))
-              case NoSuchJar() => ctx.complete(StatusCodes.BadRequest,ErrorResponse("No such jar."))
-              case e: Throwable => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
-              case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
+      delete {
+        path(Segment) { jarName =>
+          corsFilter(List("*")) {
+            val resultFuture = jarActor ? DeleteJar(jarName)
+            respondWithMediaType(MediaTypes.`application/json`) { ctx =>
+              resultFuture.map {
+                case Success(message: String) => ctx.complete(StatusCodes.OK, SimpleMessage(message))
+                case NoSuchJar() => ctx.complete(StatusCodes.BadRequest, ErrorResponse("No such jar."))
+                case e: Throwable => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
+                case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
+              }
             }
           }
         }
-      }
-    } ~
-    pathEnd {
-      get {
-        corsFilter(List("*")) {
-          respondWithMediaType(MediaTypes.`application/json`) { ctx =>
-            val future = jarActor ? GetAllJars()
-            future.map {
-              case jarsInfo: JarsInfo => ctx.complete(StatusCodes.OK, jarsInfo)
-              case e: Throwable => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
-              case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
+      } ~
+      pathEnd {
+        get {
+          corsFilter(List("*")) {
+            respondWithMediaType(MediaTypes.`application/json`) { ctx =>
+              val future = jarActor ? GetAllJars()
+              future.map {
+                case jarsInfo: JarsInfo => ctx.complete(StatusCodes.OK, jarsInfo)
+                case e: Throwable => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
+                case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
+              }
             }
           }
         }
-      }
-    } ~ options {
+      } ~ options {
       corsFilter(List("*"), HttpHeaders.`Access-Control-Allow-Methods`(Seq(HttpMethods.OPTIONS, HttpMethods.GET, HttpMethods.POST, HttpMethods.DELETE))) {
         complete {
           "OK"
