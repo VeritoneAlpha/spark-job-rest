@@ -1,11 +1,8 @@
 package server.domain.actors
 
-import java.util.concurrent.TimeUnit
-
 import akka.actor.ActorSystem
 import akka.pattern.ask
 import akka.testkit.TestActorRef
-import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 import context.{FakeContext, JobContextFactory}
 import org.apache.spark.SparkContext
@@ -13,7 +10,7 @@ import org.junit.runner.RunWith
 import org.scalatest._
 import org.scalatest.concurrent.TimeLimitedTests
 import org.scalatest.junit.JUnitRunner
-import org.scalatest.time.SpanSugar._
+import test.durations.{contextTimeout, timeLimits}
 
 import scala.util.Success
 
@@ -22,11 +19,11 @@ import scala.util.Success
  */
 @RunWith(classOf[JUnitRunner])
 class ContextActorSpec extends WordSpec with MustMatchers with BeforeAndAfter with TimeLimitedTests {
-  val timeLimit = 10 seconds
+  val timeLimit = timeLimits.contextTest
 
   val config = ConfigFactory.load()
 
-  implicit val timeout = Timeout(10, TimeUnit.SECONDS)
+  implicit val timeout = contextTimeout
   implicit val system = ActorSystem("localSystem")
 
   var contextActorRef: TestActorRef[ContextActor] = _
