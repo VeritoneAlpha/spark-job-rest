@@ -52,7 +52,7 @@ class DatabaseConnectionActorSpec extends WordSpec with MustMatchers with Before
     }
 
     "provide database connection" in {
-      val DatabaseConnection(db) = Await.result(databaseConnectionActorRef ? GetDataBaseConnection, timeout.duration)
+      val DatabaseConnection(db) = Await.result(databaseConnectionActorRef ? GetDatabaseConnection, timeout.duration)
       val context = Context("test context", ContextState.Running, config, Jars(List("foo", "bar")), nextId)
       Await.result(db.run(contexts += context), timeout.duration)
       Await.result(db.run(schema.contexts.result), timeout.duration).size must not equal 0

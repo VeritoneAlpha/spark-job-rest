@@ -35,7 +35,7 @@ package object messages {
   /**
    * Requests database connection from [[DatabaseServerActor]] and [[DatabaseConnectionActor]]
    */
-  case object GetDataBaseConnection
+  case object GetDatabaseConnection
 
   /**
    * Passes database connection obtained by [[DatabaseServerActor]] and [[DatabaseConnectionActor]]

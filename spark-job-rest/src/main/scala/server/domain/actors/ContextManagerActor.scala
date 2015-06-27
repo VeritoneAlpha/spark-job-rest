@@ -11,6 +11,7 @@ import responses.{Context, Contexts}
 import server.domain.actors.ContextManagerActor._
 import server.domain.actors.JarActor.{GetJarsPathForAll, ResultJarsPathForAll}
 import utils.ActorUtils
+import utils.DatabaseUtils._
 
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -42,7 +43,7 @@ object ContextManagerActor {
  * @param defaultConfig configuration defaults
  * @param jarActor actor that responsible for jars which may be included to context classpath
  */
-class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef) extends Actor {
+class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef, connectionProviderActor: ActorRef) extends Actor {
 
   val log = LoggerFactory.getLogger(getClass)
 
@@ -54,6 +55,11 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef) extends Act
 
   val sparkUIConfigPath: String = "spark.ui.port"
 
+  /**
+   * Database connection received from connection provider [[server.domain.actors.DatabaseServerActor]]
+   */
+  val db = dbConnection(connectionProviderActor)
+
   override def receive: Receive = {
     case CreateContext(contextName, jars, config) =>
       if (contextMap contains contextName) {
@@ -61,14 +67,15 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef) extends Act
       } else if (jars.isEmpty) {
         sender ! ContextActor.FailedInit("jars property is not defined or is empty.")
       } else {
-        //adding the default configs
+
+        // Adding the default configs
         var mergedConfig = config.withFallback(defaultConfig)
 
-        //The port for the actor system
+        // The port for the actor system
         val port = ActorUtils.findAvailablePort(lastUsedPort)
         lastUsedPort = port
 
-        //If not defined, setting the spark.ui port
+        // If not defined, setting the spark.ui port
         if (!config.hasPath(sparkUIConfigPath)) {
           mergedConfig = addSparkUiPortToConfig(mergedConfig)
         }
@@ -150,11 +157,11 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef) extends Act
 
     val sleepTime = getValueFromConfig(config, "appConf.init.sleep", 3000)
     val tries = config.getInt("appConf.init.tries")
-    val retryTimeOut = config.getLong("appConf.init.retry-timeout") millis
-    val retryInterval = config.getLong("appConf.init.retry-interval") millis
+    val retryTimeOut = config.getLong("appConf.init.retry-timeout").millis
+    val retryInterval = config.getLong("appConf.init.retry-interval").millis
     val sparkUiPort = config.getString(sparkUIConfigPath)
 
-    context.system.scheduler.scheduleOnce(sleepTime millis) {
+    context.system.scheduler.scheduleOnce(sleepTime.millis) {
       val isAwakeFuture = context.actorOf(ReTry.props(tries, retryTimeOut, retryInterval, actorRef)) ? IsAwake
       isAwakeFuture.map {
         case isAwake =>

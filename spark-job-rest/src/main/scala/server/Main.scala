@@ -24,8 +24,11 @@ object Main {
 
     val supervisor = system.actorOf(Props(classOf[Supervisor]), "Supervisor")
 
+    // Database server actor will instantiate database and ensures that schema is created
+    val databaseServerActor = createActor(Props(new DatabaseServerActor(defaultConfig)), "DatabaseServerActor", system, supervisor)
+
     val jarActor = createActor(Props(new JarActor(defaultConfig)), "JarActor", system, supervisor)
-    val contextManagerActor = createActor(Props(new ContextManagerActor(defaultConfig, jarActor)), "ContextManager", system, supervisor)
+    val contextManagerActor = createActor(Props(new ContextManagerActor(defaultConfig, jarActor, databaseServerActor)), "ContextManager", system, supervisor)
     val jobManagerActor = createActor(Props(new JobActor(defaultConfig, contextManagerActor)), "JobManager", system, supervisor)
 
     // HTTP server will start immediately after controller instantiation

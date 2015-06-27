@@ -28,7 +28,7 @@ class DatabaseServerActor(config: Config) extends Actor with Stash {
   override def postStop(): Unit = server.stop()
 
   def initialised: Receive = {
-    case GetDataBaseConnection =>
+    case GetDatabaseConnection =>
       log.info(s"Sending database connection ${server.db} to ${sender()}")
       sender() ! DatabaseConnection(server.db)
     case GetDatabaseInfo =>

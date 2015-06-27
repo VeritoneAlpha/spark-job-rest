@@ -52,7 +52,7 @@ class DatabaseServerActorSpec extends WordSpec with MustMatchers with BeforeAndA
     }
 
     "provide database connection" in {
-      val future = databaseServerActorRef ? GetDataBaseConnection
+      val future = databaseServerActorRef ? GetDatabaseConnection
       val Success(DatabaseConnection(db)) = future.value.get
       val context = Context("test context", ContextState.Running, config, Jars(List("foo", "bar")), nextId)
       Await.result(db.run(contexts += context), timeout.duration)

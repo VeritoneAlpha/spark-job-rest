@@ -1,10 +1,7 @@
 package server.domain.actors
 
-import java.util.concurrent.TimeUnit
-
 import akka.actor.{Actor, ActorRef}
 import akka.pattern.ask
-import akka.util.Timeout
 import org.slf4j.LoggerFactory
 import persistence.slickWrapper.Driver.api._
 import server.domain.actors.messages._
@@ -13,19 +10,20 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 
 /**
- * Database connection actor responsible for negotiating with database server actor for database info and
- * constructing database connection which it ships to all interested clients.
+ * Database connection actor responsible for requesting with database info from connection provider actor and
+ * constructing database connection which may be shipped to interested clients.
  * Also database connection can pass database info to remote actors to let them create their own connections.
+ * Which means that both [[DatabaseServerActor]] and [[DatabaseServerActor]] can be a connection provider.
  *
- * @param databaseServerActor reference to database actor
+ * @param connectionProviderActor reference to actor which has database connection
  */
-class DatabaseConnectionActor(databaseServerActor: ActorRef) extends Actor {
-  implicit val timeout = Timeout(5, TimeUnit.SECONDS)
+class DatabaseConnectionActor(connectionProviderActor: ActorRef) extends Actor {
+  implicit val timeout = durations.defaultAskTimeout
 
   val log = LoggerFactory.getLogger(getClass)
 
   def receive: Receive = {
-    case GetDataBaseConnection =>
+    case GetDatabaseConnection =>
       val client = sender()
       for (databaseInfo <- (self ? GetDatabaseInfo).mapTo[DatabaseInfo]) {
         val db = Database.forURL(url = databaseInfo.connectionString)
@@ -34,7 +32,7 @@ class DatabaseConnectionActor(databaseServerActor: ActorRef) extends Actor {
       }
     case GetDatabaseInfo =>
       val client = sender()
-      for (databaseInfo <- (databaseServerActor ? GetDatabaseInfo).mapTo[DatabaseInfo]) {
+      for (databaseInfo <- (connectionProviderActor ? GetDatabaseInfo).mapTo[DatabaseInfo]) {
         log.info(s"Sending database info $databaseInfo to $client")
         client ! databaseInfo
       }
