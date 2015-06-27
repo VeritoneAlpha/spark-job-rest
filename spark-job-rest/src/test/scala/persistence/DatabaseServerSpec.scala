@@ -9,6 +9,7 @@ import org.scalatest.junit.JUnitRunner
 import org.scalatest.{BeforeAndAfter, MustMatchers, WordSpec}
 import persistence.schema._
 import persistence.slickWrapper.Driver.api._
+import test.fixtures
 import utils.schemaUtils._
 
 import scala.concurrent.Await
@@ -50,5 +51,5 @@ class DatabaseServerSpec extends WordSpec with MustMatchers with BeforeAndAfter 
     }
   }
 
-  val context = Context("test context", ContextState.Running, config, None, Jars(List("foo", "bar")), nextId)
+  val context = fixtures.contextEntity
 }

@@ -4,6 +4,10 @@ import java.util.concurrent.TimeUnit
 
 import akka.util.Timeout
 
+import scala.concurrent.duration._
+
 package object durations {
-  implicit val defaultAskTimeout = Timeout(100, TimeUnit.MILLISECONDS)
+  val defaultAskTimeout = Timeout(100, TimeUnit.MILLISECONDS)
+
+  val defaultDbTimeout = 100 millis
 }

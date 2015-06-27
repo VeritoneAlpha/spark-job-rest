@@ -41,5 +41,5 @@ package object messages {
    * Passes database connection obtained by [[DatabaseServerActor]] and [[DatabaseConnectionActor]]
    * @param db database connection
    */
-  case class DatabaseConnection(db: Database)
+  case class DatabaseConnection(@transient db: Database)
 }

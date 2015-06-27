@@ -36,10 +36,10 @@ package object fixtures {
   /**
    * Random context entity to reduce updates when context schema updates
    */
-  def contextEntity = Context("test context", ContextState.Running, bananaConfig, None, Jars(), nextId)
+  def contextEntity = ContextEntity("test context", diningConfig, Some(bananaConfig), Jars(), ContextState.Running, nextId)
 
   /**
    * Random job entity to reduce updates when context schema updates
    */
-  def jobEntity(context: Context) = Job(Some(context.id), None, None, "java.utils.UUID", diningConfig, Some(bananaConfig))
+  def jobEntity(context: ContextEntity) = JobEntity(Some(context.id), None, None, "java.utils.UUID", diningConfig, Some(bananaConfig))
 }

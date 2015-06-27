@@ -28,7 +28,7 @@ import persistence.schema.JobStatus._
  * @param submitTime timestamp when jab was submitted
  * @param id job ID
  */
-case class Job(contextId: WEAK_LINK,
+case class JobEntity(contextId: WEAK_LINK,
                startTime: Option[Long],
                stopTime: Option[Long],
                runningClass: String,
@@ -42,7 +42,7 @@ case class Job(contextId: WEAK_LINK,
  * Jobs table stores information about jobs history
  * @param tag table tag name
  */
-class Jobs(tag: Tag) extends Table[Job] (tag, jobsTable) {
+class Jobs(tag: Tag) extends Table[JobEntity] (tag, jobsTable) {
   import implicits._
 
   def id = column[ID]("JOB_ID", O.PrimaryKey)
@@ -55,7 +55,7 @@ class Jobs(tag: Tag) extends Table[Job] (tag, jobsTable) {
   def status = column[JobStatus]("STATUS")
   def submitTime = column[Long]("SUBMIT_TIME")
 
-  def * = (contextId.?, startTime, stopTime, runningClass, submittedConfig, finalConfig, status, submitTime, id) <> (Job.tupled, Job.unapply)
+  def * = (contextId.?, startTime, stopTime, runningClass, submittedConfig, finalConfig, status, submitTime, id) <> (JobEntity.tupled, JobEntity.unapply)
 
   def context = foreignKey("CONTEXT_FK", contextId, contexts)(
     _.id,

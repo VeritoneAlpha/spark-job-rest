@@ -7,6 +7,9 @@ import akka.pattern.ask
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.commons.lang.exception.ExceptionUtils
 import org.slf4j.LoggerFactory
+import persistence.schema.ContextPersistenceService._
+import persistence.schema._
+import persistence.slickWrapper.Driver.api._
 import responses.{Context, Contexts}
 import server.domain.actors.ContextManagerActor._
 import server.domain.actors.JarActor.{GetJarsPathForAll, ResultJarsPathForAll}
@@ -67,7 +70,6 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef, connectionP
       } else if (jars.isEmpty) {
         sender ! ContextActor.FailedInit("jars property is not defined or is empty.")
       } else {
-
         // Adding the default configs
         var mergedConfig = config.withFallback(defaultConfig)
 
@@ -84,6 +86,7 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef, connectionP
         log.info(s"Received CreateContext message : context=$contextName jars=$jars")
 
         val jarsFuture = jarActor ? GetJarsPathForAll(jars, contextName)
+
         jarsFuture map {
           case result @ ResultJarsPathForAll(pathForClasspath, pathForSpark) =>
             log.info(s"Received jars path: $result")
@@ -95,7 +98,25 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef, connectionP
 
             val host = getValueFromConfig(defaultConfig, ActorUtils.HOST_PROPERTY_NAME, "127.0.0.1")
             val actorRef = context.actorSelection(ActorUtils.getContextActorAddress(contextName, host, port))
-            sendInitMessage(contextName, port, actorRef, webSender, mergedConfig, pathForSpark)
+
+            // Persist context state and obtain context ID
+            val contextEntity = ContextEntity(contextName, config, Some(mergedConfig), Jars.fromString(jars))
+            val saveContextFuture = db.run(contexts += contextEntity)
+
+            // Initialize context
+            saveContextFuture onComplete {
+              case _ => sendInitMessage(contextName, contextEntity.id, port, actorRef, webSender, mergedConfig, pathForSpark)
+            }
+
+            // Catch persistence error
+            saveContextFuture onFailure {
+              case e: Throwable =>
+                log.error(s"Failed! ${ExceptionUtils.getStackTrace(e)}")
+                webSender ! e
+              case reason =>
+                log.error(s"Failed! $reason")
+                webSender ! ContextActor.FailedInit(s"Can't save context to database: $reason.")
+            }
         } onFailure {
           case e: Exception =>
             log.error(s"Failed! ${ExceptionUtils.getStackTrace(e)}")
@@ -153,7 +174,7 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef, connectionP
       log.info(s"Received GetAllContexts message.")
   }
 
-  def sendInitMessage(contextName: String, port: Int, actorRef: ActorSelection, sender: ActorRef, config: Config, jarsForSpark: List[String]): Unit = {
+  def sendInitMessage(contextName: String, contextId: ID, port: Int, actorRef: ActorSelection, sender: ActorRef, config: Config, jarsForSpark: List[String]): Unit = {
 
     val sleepTime = getValueFromConfig(config, "appConf.init.sleep", 3000)
     val tries = config.getInt("appConf.init.tries")
@@ -166,7 +187,7 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef, connectionP
       isAwakeFuture.map {
         case isAwake =>
           log.info(s"Remote context actor is awaken: $isAwake")
-          val initializationFuture = actorRef ? ContextActor.Initialize(contextName, config, jarsForSpark)
+          val initializationFuture = actorRef ? ContextActor.Initialize(contextName, contextId, connectionProviderActor, config, jarsForSpark)
           initializationFuture map {
             case success: ContextActor.Initialized =>
               log.info(s"Context '$contextName' initialized: $success")
@@ -178,12 +199,14 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef, connectionP
               processMap.remove(contextName).get ! ContextProcessActor.Terminate()
           } onFailure {
             case e: Exception =>
+              updateContextState(contextId, ContextState.Failed, db)
               log.error("FAILED to send init message!", e)
               sender ! ContextActor.FailedInit(ExceptionUtils.getStackTrace(e))
               processMap.remove(contextName).get ! ContextProcessActor.Terminate()
           }
       } onFailure {
         case e: Exception =>
+          updateContextState(contextId, ContextState.Failed, db)
           log.error("Refused to wait for remote actor, consider it as dead!", e)
           sender ! ContextActor.FailedInit(ExceptionUtils.getStackTrace(e))
       }
