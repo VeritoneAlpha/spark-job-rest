@@ -7,7 +7,7 @@ import com.typesafe.config.{Config, ConfigValueFactory}
 import context.JobContextFactory
 import org.apache.commons.lang.exception.ExceptionUtils
 import org.slf4j.LoggerFactory
-import persistence.schema.ContextPersistenceService._
+import persistence.schema.ContextPersistenceService.updateContextState
 import persistence.schema.{ContextState, ID}
 import persistence.slickWrapper.Driver.api._
 import responses.{Job, JobStates}
@@ -88,7 +88,7 @@ class ContextActor(localConfig: Config) extends Actor with Stash {
    * Context cleanup
    */
   override def postStop(): Unit = {
-    updateContextState(contextId, ContextState.Stopped, db)
+    updateContextState(contextId, ContextState.Stopped, db, "Context actor stopped")
   }
 
   /**
@@ -117,13 +117,13 @@ class ContextActor(localConfig: Config) extends Actor with Stash {
       try {
         defaultConfig = config.withValue("context.jars", ConfigValueFactory.fromAnyRef(jarsForSpark.asJava))
         jobContext = JobContextFactory.makeContext(defaultConfig, contextName)
-        updateContextState(contextId, ContextState.Running, db)
+        updateContextState(contextId, ContextState.Running, db, s"Created job context: $jobContext")
         sender ! Initialized()
         log.info("Successfully initialized context " + contextName)
       } catch {
         case e: Exception =>
           log.error("Exception while initializing", e)
-          updateContextState(contextId, ContextState.Failed, db)
+          updateContextState(contextId, ContextState.Failed, db, s"Context creation exception: $e")
           sender ! FailedInit(ExceptionUtils.getStackTrace(e))
           gracefullyShutdown()
       }
@@ -139,7 +139,7 @@ class ContextActor(localConfig: Config) extends Actor with Stash {
    */
   def initialized: Receive = {
     case ShutDown() =>
-      updateContextState(contextId, ContextState.Stopped, db)
+      updateContextState(contextId, ContextState.Stopped, db, "Received shutdown request")
       log.info(s"Context received ShutDown message : contextName=$contextName")
       log.info(s"Shutting down SparkContext $contextName")
 

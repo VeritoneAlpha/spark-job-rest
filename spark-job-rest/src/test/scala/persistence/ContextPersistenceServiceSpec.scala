@@ -4,6 +4,7 @@ import org.junit.runner.RunWith
 import org.scalatest.concurrent.TimeLimitedTests
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.{BeforeAndAfter, MustMatchers, WordSpec}
+import persistence.schema.ContextState._
 import persistence.schema._
 import persistence.slickWrapper.Driver.api._
 import test.durations.{dbTimeout, timeLimits}
@@ -36,32 +37,34 @@ class ContextPersistenceServiceSpec extends WordSpec with MustMatchers with Befo
 
   "ContextPersistenceService" should {
     "update context state" in {
-      val context = fixtures.contextEntity
-      Await.result(db.run(contexts += context), timeout.duration)
-
-      ContextPersistenceService.updateContextState(context.id, ContextState.Stopped, db)
-
-      val finalContext = Await.result(
-        db.run(contexts.filter(_.id === context.id).result),
-        timeout.duration
-      ).head
-
-      finalContext.state mustEqual ContextState.Stopped
+      val (_, finalContext) = createAndUpdateThrough(Requested, Running, "awesome jump")
+      finalContext.state mustEqual Running
+      finalContext.details mustEqual "awesome jump"
     }
 
     "not change context state if it is failed" in {
-      val context = fixtures.contextEntity
-      Await.result(db.run(contexts += context), timeout.duration)
-
-      ContextPersistenceService.updateContextState(context.id, ContextState.Failed, db)
-      ContextPersistenceService.updateContextState(context.id, ContextState.Stopped, db)
-
-      val finalContext = Await.result(
-        db.run(contexts.filter(_.id === context.id).result),
-        timeout.duration
-      ).head
-
-      finalContext.state mustEqual ContextState.Failed
+      val (_, finalContext) = createAndUpdateThrough(Failed, Running)
+      finalContext.state mustEqual Failed
     }
+
+    "not change context state if it is stopped" in {
+      val (_, finalContext) = createAndUpdateThrough(Stopped, Running)
+      finalContext.state mustEqual Stopped
+    }
+  }
+
+  def createAndUpdateThrough(through: ContextState, to: ContextState, lastDetails: String = "") = {
+    val initialContext = fixtures.contextEntity
+    Await.result(db.run(contexts += initialContext), timeout.duration)
+
+    ContextPersistenceService.updateContextState(initialContext.id, through, db)
+    ContextPersistenceService.updateContextState(initialContext.id, to, db, lastDetails)
+
+    val finalContext = Await.result(
+      db.run(contexts.filter(_.id === initialContext.id).result),
+      timeout.duration
+    ).head
+
+    (initialContext, finalContext)
   }
 }

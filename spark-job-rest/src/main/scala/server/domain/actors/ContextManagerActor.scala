@@ -7,7 +7,7 @@ import akka.pattern.ask
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.commons.lang.exception.ExceptionUtils
 import org.slf4j.LoggerFactory
-import persistence.schema.ContextPersistenceService._
+import persistence.schema.ContextPersistenceService.updateContextState
 import persistence.schema._
 import persistence.slickWrapper.Driver.api._
 import responses.{Context, Contexts}
@@ -38,7 +38,7 @@ object ContextManagerActor {
   case class ContextAlreadyExists()
   case class DestroyProcess(process: Process)
   case class IsAwake()
-  case class ContextInfo(contextName: String, sparkUiPort: String, @transient referenceActor: ActorSelection)
+  case class ContextInfo(contextName: String, contextId: ID, sparkUiPort: String, @transient referenceActor: ActorSelection)
 }
 
 /**
@@ -149,7 +149,9 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef, connectionP
       log.info(s"Received ContextProcessTerminated message : context=$contextName, statusCode=$statusCode")
       contextMap remove contextName foreach {
         case contextInfo: ContextInfo =>
-          log.error(s"Removing context $contextName due to corresponding process exit with status code $statusCode")
+          // Persist process failure
+          updateContextState(contextInfo.contextId, ContextState.Failed, db, s"Context process terminated with status code $statusCode")
+          // FIXME: this might be unnecessary since context process is already down
           contextInfo.referenceActor ! DeleteContext(contextName)
       }
 
@@ -195,7 +197,7 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef, connectionP
           initializationFuture map {
             case success: ContextActor.Initialized =>
               log.info(s"Context '$contextName' initialized: $success")
-              contextMap += contextName -> ContextInfo(contextName, sparkUiPort, actorRef)
+              contextMap += contextName -> ContextInfo(contextName, contextId, sparkUiPort, actorRef)
               sender ! Context(contextName, sparkUiPort)
             case error @ ContextActor.FailedInit(reason) =>
               log.error(s"Init failed for context $contextName", reason)
@@ -203,14 +205,14 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef, connectionP
               processMap.remove(contextName).get ! ContextProcessActor.Terminate()
           } onFailure {
             case e: Exception =>
-              updateContextState(contextId, ContextState.Failed, db)
+              updateContextState(contextId, ContextState.Failed, db, "Failed to send init message")
               log.error("FAILED to send init message!", e)
               sender ! ContextActor.FailedInit(ExceptionUtils.getStackTrace(e))
               processMap.remove(contextName).get ! ContextProcessActor.Terminate()
           }
       } onFailure {
         case e: Exception =>
-          updateContextState(contextId, ContextState.Failed, db)
+          updateContextState(contextId, ContextState.Failed, db, s"Context creation timeout: $e")
           log.error("Refused to wait for remote actor, consider it as dead!", e)
           sender ! ContextActor.FailedInit(ExceptionUtils.getStackTrace(e))
       }

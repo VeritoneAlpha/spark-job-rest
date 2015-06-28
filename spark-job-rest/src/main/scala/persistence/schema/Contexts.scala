@@ -46,11 +46,13 @@ object Jars {
  * Context entity
  * @param id context id
  * @param name context name
- * @param submittedConfig context config
+ * @param submittedConfig config submitted by client
+ * @param finalConfig final config passed to context
  * @param jars list of JARs associated with the config
  * @param state context state
+ * @param details detailed information about context state
  */
-case class ContextEntity(name: String, submittedConfig: Config, finalConfig: Option[Config], jars: Jars, state: ContextState = Requested, id: ID = nextId)
+case class ContextEntity(name: String, submittedConfig: Config, finalConfig: Option[Config], jars: Jars, state: ContextState = Requested, details: String = "", id: ID = nextId)
 
 /**
  * Collection of methods for persisting context entities
@@ -58,15 +60,15 @@ case class ContextEntity(name: String, submittedConfig: Config, finalConfig: Opt
 object ContextPersistenceService {
   /**
    * Synchronously updates state for context with specified id.
-   * Does not replace [[Failed]] state.
+   * Does not replace [[Failed]] or [[Stopped]] states.
    *
    * @param contextId context's ID
    * @param newState context state to set
    * @param db database connection
    */
-  def updateContextState(contextId: ID, newState: ContextState, db: Database): Unit = {
-    val affectedContext = for { c <- contexts if c.id === contextId && c.state =!= Failed } yield c
-    val contextStateUpdate = affectedContext map (_.state) update newState
+  def updateContextState(contextId: ID, newState: ContextState, db: Database, newDetails: String = ""): Unit = {
+    val affectedContext = for { c <- contexts if c.id === contextId && c.state =!= Failed && c.state =!= Stopped } yield c
+    val contextStateUpdate = affectedContext map (x => (x.state, x.details)) update (newState, newDetails)
     Await.result(db.run(contextStateUpdate), defaultDbTimeout)
   }
 }
@@ -84,6 +86,7 @@ class Contexts(tag: Tag) extends Table[ContextEntity] (tag, contextsTable) {
   def finalConfig = column[Option[Config]]("FINAL_CONFIG", O.SqlType(configSQLType))
   def jars = column[Jars]("JARS")
   def state = column[ContextState]("STATE")
+  def details = column[String]("DETAILS", O.SqlType("VARCHAR(4096)"))
 
-  def * = (name, submittedConfig, finalConfig, jars, state, id) <> (ContextEntity.tupled, ContextEntity.unapply)
+  def * = (name, submittedConfig, finalConfig, jars, state, details, id) <> (ContextEntity.tupled, ContextEntity.unapply)
 }
