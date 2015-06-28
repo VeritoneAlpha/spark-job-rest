@@ -6,16 +6,18 @@ import akka.actor.ActorRef
 import akka.pattern.ask
 import akka.util.Timeout
 import com.typesafe.config.{Config, ConfigFactory}
+import org.slf4j.LoggerFactory
 import server.domain.actors._
 import server.domain.actors.durations.defaultAskTimeout
 import server.domain.actors.messages.{Initialized, IsInitialized}
 
 import scala.annotation.tailrec
-import scala.concurrent.Await
+import scala.concurrent.{Await, TimeoutException}
 import scala.util.{Success, Try}
 
 
 object ActorUtils {
+  private val log = LoggerFactory.getLogger(getClass)
 
   val PREFIX_CONTEXT_ACTOR = "A-"
   val PREFIX_CONTEXT_SYSTEM = "S-"
@@ -86,11 +88,15 @@ object ActorUtils {
       implicit val askTimeout = timeout
       val future = actor ? IsInitialized
       // Await for future
-      Await.ready(future, timeout.duration)
+      try { Await.ready(future, timeout.duration) }
+      // Ignore timeout
+      catch { case _: TimeoutException => }
       // Return if actor initialized or retry
-      future.value.get match {
+      future.value.getOrElse(None) match {
         case Success(Initialized) =>
-        case _ => awaitActorInitialization(actor, timeout, tries - 1)
+        case _ =>
+          log.info(s"Actor $actor is not responding. Retrying.")
+          awaitActorInitialization(actor, timeout, tries - 1)
       }
   }
 }
