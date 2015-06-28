@@ -79,8 +79,8 @@ function stop_server() {
     exec_cmd "pkill -f 'java.*spark-job-rest.jar'" || true
 }
 
-function remove_server() {
-    echo "Remove server"
+function delete_server() {
+    echo "Removing server"
     setup
     exec_cmd "rm -rf ${SJR_DEPLOY_PATH}"
 }
@@ -102,9 +102,14 @@ function extract_package() {
     fi
 }
 
+function remove_server() {
+    echo "Removing instance at ${SJR_DEPLOY_HOST}:${SJR_DEPLOY_PATH}"
+    stop_server
+    delete_server
+}
+
 function deploy_server() {
     echo "Deploing to ${SJR_DEPLOY_HOST}:${SJR_DEPLOY_PATH}"
-    stop_server
     remove_server
     upload_tarball
     extract_package
@@ -145,6 +150,9 @@ function main() {
     case "$CMD" in
     deploy) setup
         deploy_server
+        ;;
+    remove) setup
+        remove_server
         ;;
     stop) setup
         stop_server
