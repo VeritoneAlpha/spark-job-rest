@@ -3,12 +3,19 @@ package utils
 import java.io.IOException
 import java.net.ServerSocket
 
+import akka.actor.ActorRef
+import akka.pattern.ask
+import akka.util.Timeout
 import com.typesafe.config.{Config, ConfigFactory}
 import server.domain.actors._
+import server.domain.actors.durations.defaultAskTimeout
+import server.domain.actors.messages.{Initialized, IsInitialized}
 
-/**
- * Created by raduc on 11/11/14.
- */
+import scala.annotation.tailrec
+import scala.concurrent.Await
+import scala.util.Success
+
+
 object ActorUtils {
 
   val PREFIX_CONTEXT_ACTOR = "A-"
@@ -26,7 +33,7 @@ object ActorUtils {
   }
 
   def findAvailablePort(lastUsedPort: Int): Integer = {
-    val notFound = true;
+    val notFound = true
     var port = lastUsedPort + 1
     while (notFound) {
       try {
@@ -34,9 +41,8 @@ object ActorUtils {
         return port
       }
       catch {
-        case e: IOException => {
+        case e: IOException =>
           port += 1
-        }
       }
     }
     return 0
@@ -66,5 +72,27 @@ object ActorUtils {
       }"""
 
     ConfigFactory.parseString(configStr).withFallback(commonConfig)
+  }
+
+  /**
+   * Blocks until actor will be initialized
+   * @param actor actor reference
+   * @param timeout timeout for each ask attempt
+   * @param tries how many attempt should
+   */
+  @tailrec
+  def awaitActorInitialization(actor: ActorRef, timeout: Timeout = defaultAskTimeout, tries: Int = 10): Unit = tries match {
+    case 0 =>
+      throw new RuntimeException(s"Refused to wait for actor $actor initialization.")
+    case _ =>
+      implicit val askTimeout = timeout
+      val future = actor ? IsInitialized
+      // Await for future
+      Await.ready(future, timeout.duration)
+      // Return if actor initialized or retry
+      future.value.get match {
+        case Success(Initialized) =>
+        case _ => awaitActorInitialization(actor, timeout, tries - 1)
+      }
   }
 }

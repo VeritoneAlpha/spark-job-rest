@@ -76,6 +76,7 @@ class DatabaseServer(config: Config) {
    * Starts server
    */
   def start() = {
+    log.info(s"Starting database server at $baseDir")
     server.start()
     log.info("Database serer started.")
     this

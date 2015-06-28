@@ -5,6 +5,8 @@ import akka.pattern.ask
 import com.typesafe.config.ConfigFactory
 import logging.LoggingOutputStream
 import server.domain.actors._
+import server.domain.actors.durations.databaseInitializationTimeout
+import utils.ActorUtils.awaitActorInitialization
 
 import scala.concurrent.Await
 
@@ -26,6 +28,8 @@ object Main {
 
     // Database server actor will instantiate database and ensures that schema is created
     val databaseServerActor = createActor(Props(new DatabaseServerActor(defaultConfig)), "DatabaseServerActor", system, supervisor)
+    // We should wait for this actor to be initialized befor
+    awaitActorInitialization(databaseServerActor, databaseInitializationTimeout)
 
     val jarActor = createActor(Props(new JarActor(defaultConfig)), "JarActor", system, supervisor)
     val contextManagerActor = createActor(Props(new ContextManagerActor(defaultConfig, jarActor, databaseServerActor)), "ContextManager", system, supervisor)

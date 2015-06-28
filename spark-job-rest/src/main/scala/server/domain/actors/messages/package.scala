@@ -14,7 +14,17 @@ package object messages {
   case object Uninitialized
 
   /**
-   * This message should be sent to actor to initialize it
+   * This message is sent to actor to get it's initialization status
+   */
+  case object IsInitialized
+
+  /**
+   * When actor is initialized it returns this message in answer for [[IsInitialized]]
+   */
+  case object Initialized
+
+  /**
+   * This message should be sent to actor to initialize it.
    */
   case object Init
 

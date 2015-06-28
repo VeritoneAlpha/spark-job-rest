@@ -61,7 +61,11 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef, connectionP
   /**
    * Database connection received from connection provider [[server.domain.actors.DatabaseServerActor]]
    */
-  val db = dbConnection(connectionProviderActor)
+  var db: Database = _
+
+  override def preStart() = {
+    db = dbConnection(connectionProviderActor)
+  }
 
   override def receive: Receive = {
     case CreateContext(contextName, jars, config) =>
