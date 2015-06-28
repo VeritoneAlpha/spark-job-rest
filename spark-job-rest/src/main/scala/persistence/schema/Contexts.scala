@@ -65,7 +65,7 @@ object ContextPersistenceService {
    * @param db database connection
    */
   def updateContextState(contextId: ID, newState: ContextState, db: Database): Unit = {
-    val affectedContext = for { c <- contexts if c.id === contextId } yield c
+    val affectedContext = for { c <- contexts if c.id === contextId && c.state =!= Failed } yield c
     val contextStateUpdate = affectedContext map (_.state) update newState
     Await.result(db.run(contextStateUpdate), defaultDbTimeout)
   }
