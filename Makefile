@@ -28,7 +28,7 @@ REMOTE_PARAMS := SJR_DEPLOY_PATH=$(SJR_DEPLOY_PATH) \
                  SJR_IS_REMOTE_DEPLOY="true" \
                  SJR_REMOTE_DEPLOY_PATH=$(SJR_REMOTE_DEPLOY_PATH)
 
-all: build deploy
+all: stop build deploy
 
 build:
 	@mvn clean install
