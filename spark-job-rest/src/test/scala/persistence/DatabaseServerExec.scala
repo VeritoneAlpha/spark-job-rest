@@ -6,6 +6,7 @@ import com.typesafe.config.ConfigFactory
 import server.domain.actors.DatabaseServerActor
 import server.domain.actors.messages._
 import test.durations.dbTimeout
+import utils.ActorUtils.awaitActorInitialization
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -20,10 +21,9 @@ object DatabaseServerExec {
     val system = ActorSystem("DatabaseServer", config)
 
     val databaseServerActor = system.actorOf(Props(new DatabaseServerActor(config)))
+    awaitActorInitialization(databaseServerActor)
 
-    system.scheduler.scheduleOnce(timeout.duration) {
-      for (dbInfo <- databaseServerActor ? GetDatabaseInfo)
-        println(s"Started database server: $dbInfo")
-    }
+    for (dbInfo <- databaseServerActor ? GetDatabaseInfo)
+      println(s"Started database server: $dbInfo")
   }
 }

@@ -9,6 +9,7 @@ import org.h2.tools.Server
 import org.slf4j.LoggerFactory
 import persistence.slickWrapper.Driver.api._
 import server.domain.actors.messages.DatabaseInfo
+import utils.ActorUtils.findAvailablePort
 
 object DatabaseServer {
   val portConfigEntry = "appConf.database.port"
@@ -18,7 +19,7 @@ object DatabaseServer {
 }
 
 /**
- * This class wraps database server instantiation to simplify
+ * This class responsible for database server life cycle.
  * @param config application config
  */
 class DatabaseServer(config: Config) {
@@ -53,7 +54,7 @@ class DatabaseServer(config: Config) {
    * Instantiates database server from [[org.h2.server.TcpServer]]
    */
   val server = Server.createTcpServer(
-    "-tcpPort", config.getInt(portConfigEntry).toString,
+    "-tcpPort", findAvailablePort(config.getInt(portConfigEntry)).toString,
     "-baseDir", baseDir
   )
 
@@ -78,7 +79,7 @@ class DatabaseServer(config: Config) {
   def start() = {
     log.info(s"Starting database server at $baseDir")
     server.start()
-    log.info("Database serer started.")
+    log.info(s"Database serer started at $host:$port. Base directory: '$baseDir', connection: '$connectionString'")
     this
   }
 
