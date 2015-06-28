@@ -9,7 +9,7 @@ import scala.concurrent.duration._
 package object durations {
   val defaultAskTimeout = Timeout(100, TimeUnit.MILLISECONDS)
 
-  val defaultDbTimeout = 100 millis
+  val defaultDbTimeout = 5 seconds
 
-  val databaseInitializationTimeout = Timeout(1, TimeUnit.SECONDS)
+  val databaseInitializationTimeout = Timeout(10, TimeUnit.SECONDS)
 }
