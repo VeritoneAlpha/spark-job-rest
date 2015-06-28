@@ -7,5 +7,5 @@ abstract class PersistentEnumeration extends Enumeration {
   import slickWrapper.Driver._
   import slickWrapper.Driver.api._
 
-  implicit val enumMapper = MappedJdbcType.base[Value, Int](_.id, this.apply)
+  implicit val enumMapper = MappedJdbcType.base[Value, String](_.toString, this.withName)
 }

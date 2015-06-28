@@ -21,7 +21,7 @@ object DatabaseServerExec {
     val system = ActorSystem("DatabaseServer", config)
 
     val databaseServerActor = system.actorOf(Props(new DatabaseServerActor(config)))
-    awaitActorInitialization(databaseServerActor)
+    awaitActorInitialization(databaseServerActor, dbTimeout)
 
     for (dbInfo <- databaseServerActor ? GetDatabaseInfo)
       println(s"Started database server: $dbInfo")
