@@ -78,7 +78,7 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef, connectionP
         var mergedConfig = config.withFallback(defaultConfig)
 
         // The port for the actor system
-        val port = ActorUtils.findAvailablePort(lastUsedPort)
+        val port = ActorUtils.findAvailablePort(lastUsedPort + 1)
         lastUsedPort = port
 
         // If not defined, setting the spark.ui port
@@ -218,7 +218,7 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef, connectionP
   }
 
   def addSparkUiPortToConfig(config: Config): Config = {
-    lastUsedPortSparkUi = ActorUtils.findAvailablePort(lastUsedPortSparkUi)
+    lastUsedPortSparkUi = ActorUtils.findAvailablePort(lastUsedPortSparkUi + 1)
     val map = new util.HashMap[String, String]()
     map.put(sparkUIConfigPath, lastUsedPortSparkUi.toString)
     val newConf = ConfigFactory.parseMap(map)

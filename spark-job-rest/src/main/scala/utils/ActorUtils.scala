@@ -1,6 +1,5 @@
 package utils
 
-import java.io.IOException
 import java.net.ServerSocket
 
 import akka.actor.ActorRef
@@ -13,7 +12,7 @@ import server.domain.actors.messages.{Initialized, IsInitialized}
 
 import scala.annotation.tailrec
 import scala.concurrent.Await
-import scala.util.Success
+import scala.util.{Success, Try}
 
 
 object ActorUtils {
@@ -32,20 +31,19 @@ object ActorUtils {
     "akka.tcp://"  + systemName + "@" + host + ":" + port + "/user/" + actorName
   }
 
-  def findAvailablePort(lastUsedPort: Int): Integer = {
-    val notFound = true
-    var port = lastUsedPort + 1
-    while (notFound) {
-      try {
-        new ServerSocket(port).close()
-        return port
-      }
-      catch {
-        case e: IOException =>
-          port += 1
-      }
+  /**
+   * Finds available port looking up from given port number
+   * @param port port to start search from
+   * @return available port
+   */
+  @tailrec
+  def findAvailablePort(port: Int): Integer = {
+    Try {
+      new ServerSocket(port).close()
+    } match {
+      case Success(_) => port
+      case _ => findAvailablePort(port + 1)
     }
-    return 0
   }
 
   def remoteConfig(hostname: String, port: Int, commonConfig: Config): Config = {
