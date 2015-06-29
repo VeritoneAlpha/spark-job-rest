@@ -52,7 +52,7 @@ package object schema {
     (jobsTable, jobs.schema)
   )
 
-  object implicits {
+  object ColumnTypeImplicits {
     /**
      * Custom column type conversion from [[com.typesafe.config.Config]] to [[String]]
      */

@@ -5,6 +5,11 @@ import akka.pattern.ask
 import akka.util.Timeout
 import com.typesafe.config.{Config, ConfigFactory}
 import org.slf4j.LoggerFactory
+import persistence.json.JsonProtocol
+import persistence.json.JsonProtocol._
+import persistence.schema.ContextEntity
+import persistence.services.ContextPersistenceService
+import persistence.services.ContextPersistenceService.{allContexts, contextById}
 import responses._
 import server.domain.actors.ContextActor.FailedInit
 import server.domain.actors.ContextManagerActor._
@@ -14,6 +19,7 @@ import server.domain.actors.getValueFromConfig
 import spray.http._
 import spray.httpx.SprayJsonSupport.sprayJsonMarshaller
 import spray.routing.{Route, SimpleRoutingApp}
+import utils.DatabaseUtils._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
@@ -22,7 +28,7 @@ import scala.util.{Failure, Success, Try}
 /**
  * Spark-Job-REST HTTP service for Web UI and REST API.
  */
-class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor: ActorRef, jarActor: ActorRef, originalSystem: ActorSystem)
+class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor: ActorRef, jarActor: ActorRef, connectionProviderActor: ActorRef, originalSystem: ActorSystem)
   extends SimpleRoutingApp with CORSDirectives {
 
   implicit val system = originalSystem
@@ -39,6 +45,11 @@ class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor:
   val webPort = getValueFromConfig(config, "appConf.web.services.port", 8097)
 
   val route = jobRoute ~ contextRoute ~ indexRoute ~ jarRoute
+
+  /**
+   * Database connection received from connection provider [[server.domain.actors.DatabaseServerActor]]
+   */
+  var db = dbConnection(connectionProviderActor)
 
   startServer(webIp, webPort)(route) map {
     case bound => log.info(s"Started web service: $bound")
@@ -163,6 +174,45 @@ class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor:
       }
   }
 
+  /**
+   * Contexts history returns extended information about all ever running contexts.
+   */
+  def contextHistoryRoute: Route = pathPrefix("history/contexts") {
+    get {
+      path(JavaUUID) { contextId =>
+        corsFilter(List("*")) {
+          respondWithMediaType(MediaTypes.`application/json`) { ctx =>
+            contextById(contextId, db).map {
+              case Some(context: ContextEntity) => ctx.complete(StatusCodes.OK, context)
+              case None => ctx.complete(StatusCodes.BadRequest, ErrorResponse("No such context."))
+              case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
+            }
+          }
+        }
+      }
+    } ~
+      pathEnd {
+        get {
+          corsFilter(List("*")) {
+            respondWithMediaType(MediaTypes.`application/json`) { ctx =>
+              allContexts(db) onComplete {
+                case Success(contexts: Array[ContextEntity]) => ctx.complete(StatusCodes.OK, contexts)
+                case Failure(e: Exception) => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
+                case error: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(error.toString))
+              }
+            }
+          }
+        }
+      } ~
+      options {
+        corsFilter(List("*"), HttpHeaders.`Access-Control-Allow-Methods`(Seq(HttpMethods.OPTIONS, HttpMethods.GET))) {
+          complete {
+            "OK"
+          }
+        }
+      }
+  }
+
   def contextRoute: Route = pathPrefix("contexts") {
     post {
       path(Segment) { contextName =>
@@ -186,8 +236,6 @@ class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor:
                   }
                 case Failure(e) => ctx.complete(StatusCodes.BadRequest, ErrorResponse("Invalid parameters: " + e.getMessage))
               }
-
-
             }
           }
         }

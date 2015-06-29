@@ -7,8 +7,9 @@ import com.typesafe.config.{Config, ConfigValueFactory}
 import context.JobContextFactory
 import org.apache.commons.lang.exception.ExceptionUtils
 import org.slf4j.LoggerFactory
-import persistence.schema.ContextPersistenceService.updateContextState
 import persistence.schema.{ContextState, ID}
+import persistence.services.ContextPersistenceService
+import persistence.services.ContextPersistenceService.updateContextState
 import persistence.slickWrapper.Driver.api._
 import responses.{Job, JobStates}
 import server.domain.actors.ContextActor._

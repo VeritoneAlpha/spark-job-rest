@@ -43,7 +43,6 @@ case class JobEntity(contextId: WEAK_LINK,
  * @param tag table tag name
  */
 class Jobs(tag: Tag) extends Table[JobEntity] (tag, jobsTable) {
-  import implicits._
 
   def id = column[ID]("JOB_ID", O.PrimaryKey)
   def contextId = column[ID]("CONTEXT_ID")

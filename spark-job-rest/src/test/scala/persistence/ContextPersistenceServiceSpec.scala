@@ -6,6 +6,7 @@ import org.scalatest.junit.JUnitRunner
 import org.scalatest.{BeforeAndAfter, MustMatchers, WordSpec}
 import persistence.schema.ContextState._
 import persistence.schema._
+import persistence.services.ContextPersistenceService
 import persistence.slickWrapper.Driver.api._
 import test.durations.{dbTimeout, timeLimits}
 import test.fixtures

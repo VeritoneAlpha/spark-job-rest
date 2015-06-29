@@ -7,8 +7,9 @@ import akka.pattern.ask
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.commons.lang.exception.ExceptionUtils
 import org.slf4j.LoggerFactory
-import persistence.schema.ContextPersistenceService.updateContextState
 import persistence.schema._
+import persistence.services.ContextPersistenceService
+import persistence.services.ContextPersistenceService.updateContextState
 import persistence.slickWrapper.Driver.api._
 import responses.{Context, Contexts}
 import server.domain.actors.ContextManagerActor._

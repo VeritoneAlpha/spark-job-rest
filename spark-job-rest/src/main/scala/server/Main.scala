@@ -36,7 +36,7 @@ object Main {
     val jobManagerActor = createActor(Props(new JobActor(defaultConfig, contextManagerActor)), "JobManager", system, supervisor)
 
     // HTTP server will start immediately after controller instantiation
-    new Controller(defaultConfig, contextManagerActor, jobManagerActor, jarActor, system)
+    new Controller(defaultConfig, contextManagerActor, jobManagerActor, jarActor, databaseServerActor, system)
   }
 
   def createActor(props: Props, name: String, customSystem: ActorSystem, supervisor: ActorRef): ActorRef = {
