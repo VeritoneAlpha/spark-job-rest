@@ -4,14 +4,15 @@ import java.util
 
 import akka.actor.{Actor, ActorRef, ActorSelection, Props}
 import akka.pattern.ask
+import api.entities.{Jars, ContextState, ContextDetails}
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.commons.lang.exception.ExceptionUtils
 import org.slf4j.LoggerFactory
 import persistence.schema._
-import persistence.services.ContextPersistenceService
+import api.types._
 import persistence.services.ContextPersistenceService.updateContextState
 import persistence.slickWrapper.Driver.api._
-import responses.{Context, Contexts}
+import api.responses.{Context, Contexts}
 import server.domain.actors.ContextManagerActor._
 import server.domain.actors.JarActor.{GetJarsPathForAll, ResultJarsPathForAll}
 import utils.ActorUtils
@@ -105,7 +106,7 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef, connectionP
             val actorRef = context.actorSelection(ActorUtils.getContextActorAddress(contextName, host, port))
 
             // Persist context state and obtain context ID
-            val contextEntity = ContextEntity(contextName, config, Some(mergedConfig), Jars.fromString(jars))
+            val contextEntity = ContextDetails(contextName, config, Some(mergedConfig), Jars.fromString(jars))
             val saveContextFuture = db.run(contexts += contextEntity)
 
             // Initialize context

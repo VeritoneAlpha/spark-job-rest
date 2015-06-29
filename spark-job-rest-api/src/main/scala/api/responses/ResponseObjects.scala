@@ -1,4 +1,4 @@
-package responses
+package api.responses
 
 import spray.json.DefaultJsonProtocol._
 

@@ -4,9 +4,10 @@ import java.util.UUID
 
 import akka.actor.{Actor, ActorRef, ActorSelection}
 import akka.pattern.ask
+import api.entities.JobState
 import com.typesafe.config.Config
 import org.joda.time.{DateTimeZone, DateTime}
-import responses.{JobStates, Jobs, Job}
+import api.responses.{Jobs, Job}
 import server.domain.actors.ContextManagerActor.{GetAllContexts, GetContext, NoSuchContext}
 import org.slf4j.LoggerFactory
 import server.domain.actors.JobActor._
@@ -58,8 +59,8 @@ class JobActor(config: Config, contextManagerActor: ActorRef) extends Actor {
       future onSuccess {
         case contextRef: ActorSelection => {
 
-          import JobStates.RUNNING
-          fromWebApi ! Job(job.uuid, job.contextName, RUNNING.toString, "", DateTime.now(DateTimeZone.UTC).getMillis)
+          import JobState.Running
+          fromWebApi ! Job(job.uuid, job.contextName, Running.toString, "", DateTime.now(DateTimeZone.UTC).getMillis)
 
           log.info(s"Sending RunJob message to actor $contextRef")
           contextRef ! job

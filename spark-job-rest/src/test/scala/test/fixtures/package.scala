@@ -1,7 +1,7 @@
 package test
 
+import api.entities.{Jars, JobDetails, ContextState, ContextDetails}
 import com.typesafe.config.ConfigFactory
-import persistence.schema._
 
 package object fixtures {
   /**
@@ -36,10 +36,10 @@ package object fixtures {
   /**
    * Random context entity to reduce updates when context schema updates
    */
-  def contextEntity = ContextEntity("test context", diningConfig, Some(bananaConfig), Jars(), ContextState.Running, id = nextId)
+  def contextEntity = ContextDetails("test context", diningConfig, Some(bananaConfig), Jars(), ContextState.Running)
 
   /**
    * Random job entity to reduce updates when context schema updates
    */
-  def jobEntity(context: ContextEntity) = JobEntity(Some(context.id), None, None, "java.utils.UUID", diningConfig, Some(bananaConfig))
+  def jobEntity(context: ContextDetails) = JobDetails(Some(context.id), None, None, "java.utils.UUID", diningConfig, Some(bananaConfig))
 }

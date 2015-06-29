@@ -1,10 +1,12 @@
-package persistence.json
+package api.json
 
 import java.util.UUID
 
+import api.configRenderingOptions
+import api.entities.ContextState._
+import api.entities.JobState._
+import api.entities.{ContextState, ContextDetails, JobState, Jars}
 import com.typesafe.config.{Config, ConfigFactory}
-import persistence.schema.ContextState.ContextState
-import persistence.schema._
 import spray.json._
 
 import scala.util.{Failure, Success, Try}
@@ -41,6 +43,19 @@ object JsonProtocol extends DefaultJsonProtocol {
     }
   }
 
+  implicit object JobStateJsonFormat extends JsonFormat[JobState] {
+    def write(state: JobState) = JsString(state.toString)
+
+    def read(jsonState: JsValue) = jsonState match {
+      case JsString(stringState) => Try { JobState.withName(stringState) } match {
+        case Success(state: JobState) => state
+        case Failure(e: Throwable) => deserializationError("Error while parsing job state", e)
+        case error => deserializationError(s"Error while parsing job state: $error")
+      }
+      case _ => deserializationError("Expected string for job state")
+    }
+  }
+
   implicit object UUIDJsonFormat extends JsonFormat[UUID] {
     def write(uuid: UUID) = JsString(uuid.toString)
 
@@ -54,5 +69,5 @@ object JsonProtocol extends DefaultJsonProtocol {
     }
   }
 
-  implicit val contextEntityJsonFormat = jsonFormat7(ContextEntity)
+  implicit val contextEntityJsonFormat = jsonFormat7(ContextDetails)
 }

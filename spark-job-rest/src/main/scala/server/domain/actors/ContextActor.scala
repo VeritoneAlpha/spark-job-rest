@@ -2,16 +2,16 @@ package server.domain.actors
 
 import akka.actor.{Actor, ActorRef, Props, Stash, Terminated}
 import api._
+import api.entities.{JobState, ContextState}
 import com.google.gson.Gson
 import com.typesafe.config.{Config, ConfigValueFactory}
 import context.JobContextFactory
 import org.apache.commons.lang.exception.ExceptionUtils
 import org.slf4j.LoggerFactory
-import persistence.schema.{ContextState, ID}
-import persistence.services.ContextPersistenceService
+import api.types.ID
 import persistence.services.ContextPersistenceService.updateContextState
 import persistence.slickWrapper.Driver.api._
-import responses.{Job, JobStates}
+import api.responses.Job
 import server.domain.actors.ContextActor._
 import server.domain.actors.JobActor._
 import utils.ActorUtils
@@ -89,7 +89,7 @@ class ContextActor(localConfig: Config) extends Actor with Stash {
    * Context cleanup
    */
   override def postStop(): Unit = {
-    updateContextState(contextId, ContextState.Stopped, db, "Context actor stopped")
+    updateContextState(contextId, ContextState.Terminated, db, "Context actor stopped")
   }
 
   /**
@@ -140,7 +140,7 @@ class ContextActor(localConfig: Config) extends Actor with Stash {
    */
   def initialized: Receive = {
     case ShutDown() =>
-      updateContextState(contextId, ContextState.Stopped, db, "Received shutdown request")
+      updateContextState(contextId, ContextState.Terminated, db, "Received shutdown request")
       log.info(s"Context received ShutDown message : contextName=$contextName")
       log.info(s"Shutting down SparkContext $contextName")
 
@@ -191,7 +191,7 @@ class ContextActor(localConfig: Config) extends Actor with Stash {
 
     case Terminated(actor) =>
       if (actor.path.toString.contains("Supervisor/ContextManager")) {
-        updateContextState(contextId, ContextState.Stopped, db)
+        updateContextState(contextId, ContextState.Terminated, db, "Stopped due to ManagerSystem termination")
         log.info(s"Received Terminated message from: ${actor.path.toString}")
         log.warn("Shutting down the system because the ManagerSystem terminated.")
         gracefullyShutdown()
@@ -199,20 +199,20 @@ class ContextActor(localConfig: Config) extends Actor with Stash {
 
     case JobStatusEnquiry(_, jobId) =>
       val jobState = jobStateMap.getOrElse(jobId, JobDoesNotExist())
-      import JobStates._
+      import JobState._
       jobState match {
-        case x: JobRunSuccess => sender ! Job(jobId, contextName, FINISHED.toString, x.result, x.startTime)
-        case e: JobRunError => sender ! Job(jobId, contextName, ERROR.toString, e.errorMessage, e.startTime)
-        case x: JobStarted => sender ! Job(jobId, contextName, RUNNING.toString, "", x.startTime)
+        case x: JobRunSuccess => sender ! Job(jobId, contextName, Finished.toString, x.result, x.startTime)
+        case e: JobRunError => sender ! Job(jobId, contextName, Failed.toString, e.errorMessage, e.startTime)
+        case x: JobStarted => sender ! Job(jobId, contextName, Running.toString, "", x.startTime)
         case x: JobDoesNotExist => sender ! JobDoesNotExist
       }
 
     case GetAllJobsStatus() =>
-      import JobStates._
+      import JobState._
       val jobsList = jobStateMap.map {
-         case (id: String, x: JobRunSuccess) => Job(id, contextName, FINISHED.toString, x.result, x.startTime)
-         case (id: String, e: JobRunError) => Job(id, contextName, ERROR.toString, e.errorMessage, e.startTime)
-         case (id: String, x: JobStarted) => Job(id, contextName, RUNNING.toString, "", x.startTime)
+         case (id: String, x: JobRunSuccess) => Job(id, contextName, Finished.toString, x.result, x.startTime)
+         case (id: String, e: JobRunError) => Job(id, contextName, Failed.toString, e.errorMessage, e.startTime)
+         case (id: String, x: JobStarted) => Job(id, contextName, Running.toString, "", x.startTime)
        }.toList
       sender ! jobsList
 

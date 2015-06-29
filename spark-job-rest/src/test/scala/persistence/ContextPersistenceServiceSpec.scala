@@ -4,7 +4,7 @@ import org.junit.runner.RunWith
 import org.scalatest.concurrent.TimeLimitedTests
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.{BeforeAndAfter, MustMatchers, WordSpec}
-import persistence.schema.ContextState._
+import api.entities.ContextState._
 import persistence.schema._
 import persistence.services.ContextPersistenceService
 import persistence.slickWrapper.Driver.api._
@@ -49,8 +49,8 @@ class ContextPersistenceServiceSpec extends WordSpec with MustMatchers with Befo
     }
 
     "not change context state if it is stopped" in {
-      val (_, finalContext) = createAndUpdateThrough(Stopped, Running)
-      finalContext.state mustEqual Stopped
+      val (_, finalContext) = createAndUpdateThrough(Terminated, Running)
+      finalContext.state mustEqual Terminated
     }
   }
 

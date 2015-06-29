@@ -8,7 +8,7 @@ import akka.util.Timeout
 import org.slf4j.LoggerFactory
 import spray.http._
 import spray.client.pipelining._
-import responses._
+import api.responses._
 import spray.httpx.SprayJsonSupport.sprayJsonUnmarshaller
 import spray.httpx.UnsuccessfulResponseException
 import spray.httpx.unmarshalling.Unmarshaller

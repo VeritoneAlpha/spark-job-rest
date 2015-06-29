@@ -7,7 +7,7 @@ import org.junit.runner.RunWith
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{Matchers, BeforeAndAfter, FunSuite}
 import org.scalatest.junit.JUnitRunner
-import responses.Job
+import api.responses.Job
 
 /**
 * Created by raduchilom on 4/25/15.

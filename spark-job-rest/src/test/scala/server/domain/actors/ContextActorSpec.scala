@@ -10,7 +10,7 @@ import org.junit.runner.RunWith
 import org.scalatest._
 import org.scalatest.concurrent.TimeLimitedTests
 import org.scalatest.junit.JUnitRunner
-import persistence.schema.nextId
+import api.types.nextIdentifier
 import server.domain.actors.ContextActor.Initialize
 import test.durations.{contextTimeout, dbTimeout, timeLimits}
 import test.fixtures
@@ -35,10 +35,10 @@ class ContextActorSpec extends WordSpec with MustMatchers with BeforeAndAfter wi
   var connectionProvider: TestActorRef[DatabaseServerActor] = _
 
   val contextName = "demoContext"
-  val contextId = nextId
+  val contextId = nextIdentifier
 
   def initMessage(contextConfig: Config = config) =
-    Initialize(contextName, nextId, connectionProvider, contextConfig, List())
+    Initialize(contextName, contextId, connectionProvider, contextConfig, List())
 
   before {
     connectionProvider = TestActorRef(new DatabaseServerActor(config))

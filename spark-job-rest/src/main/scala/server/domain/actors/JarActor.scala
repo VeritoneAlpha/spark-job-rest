@@ -5,7 +5,7 @@ import java.io.File
 import akka.actor.{Actor, ActorLogging}
 import com.typesafe.config.Config
 import org.slf4j.LoggerFactory
-import responses.{JarsInfo, JarInfo}
+import api.responses.{JarsInfo, JarInfo}
 import server.domain.actors.JarActor._
 import utils.{FileUtils, JarUtils}
 import scala.collection.mutable.ListBuffer

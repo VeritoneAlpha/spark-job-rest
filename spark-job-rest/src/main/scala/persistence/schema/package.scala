@@ -1,32 +1,8 @@
 package persistence
 
-import java.util.UUID
-
-import com.typesafe.config.{Config, ConfigFactory, ConfigRenderOptions}
 import persistence.slickWrapper.Driver.api._
 
 package object schema {
-  /**
-   * This is a type alias for entity ID
-   */
-  type ID = UUID
-
-  /**
-   * Type alias for optional link to foreign entity
-   */
-  type WEAK_LINK = Option[ID]
-
-  /**
-   * Returns next unique identifier. We use it to simplify switching to different identifiers backend.
-   * @return next ID
-   */
-  def nextId: ID = UUID.randomUUID()
-
-  /**
-   * This render potions used to render configs to database.
-   */
-  val configRenderingOptions = ConfigRenderOptions.concise()
-
   /**
    * This SQL type should be used as a backend for [[com.typesafe.config.Config]].
    */
@@ -51,24 +27,4 @@ package object schema {
     (contextsTable, contexts.schema),
     (jobsTable, jobs.schema)
   )
-
-  object ColumnTypeImplicits {
-    /**
-     * Custom column type conversion from [[com.typesafe.config.Config]] to [[String]]
-     */
-    implicit val configColumnType = MappedColumnType.base[Config, String](
-    { config: Config => config.root().render(configRenderingOptions) },
-    { configString: String =>
-      ConfigFactory.parseString(configString)
-    }
-    )
-
-    /**
-     * Custom column type conversion from [[Jars]] to [[String]]
-     */
-    implicit val jarsColumnType = MappedColumnType.base[Jars, String](
-    { jars: Jars => jars.list.mkString(":") },
-    { string: String => Jars.fromString(string) }
-    )
-  }
 }

@@ -3,14 +3,14 @@ package server
 import akka.actor.{ActorRef, ActorSystem}
 import akka.pattern.ask
 import akka.util.Timeout
+import api.entities.ContextDetails
+import api.json.JsonProtocol
 import com.typesafe.config.{Config, ConfigFactory}
 import org.slf4j.LoggerFactory
-import persistence.json.JsonProtocol
-import persistence.json.JsonProtocol._
-import persistence.schema.ContextEntity
+import JsonProtocol._
 import persistence.services.ContextPersistenceService
 import persistence.services.ContextPersistenceService.{allContexts, contextById}
-import responses._
+import api.responses._
 import server.domain.actors.ContextActor.FailedInit
 import server.domain.actors.ContextManagerActor._
 import server.domain.actors.JarActor._
@@ -183,7 +183,7 @@ class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor:
         corsFilter(List("*")) {
           respondWithMediaType(MediaTypes.`application/json`) { ctx =>
             contextById(contextId, db).map {
-              case Some(context: ContextEntity) => ctx.complete(StatusCodes.OK, context)
+              case Some(context: ContextDetails) => ctx.complete(StatusCodes.OK, context)
               case None => ctx.complete(StatusCodes.BadRequest, ErrorResponse("No such context."))
               case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
             }
@@ -196,7 +196,7 @@ class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor:
           corsFilter(List("*")) {
             respondWithMediaType(MediaTypes.`application/json`) { ctx =>
               allContexts(db) onComplete {
-                case Success(contexts: Array[ContextEntity]) => ctx.complete(StatusCodes.OK, contexts)
+                case Success(contexts: Array[ContextDetails]) => ctx.complete(StatusCodes.OK, contexts)
                 case Failure(e: Exception) => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
                 case error: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(error.toString))
               }

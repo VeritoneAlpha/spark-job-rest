@@ -1,10 +1,10 @@
 package com.job
 
 import akka.actor.ActorSystem
+import api.entities.JobState
 import client.SparkJobRestClient
 import com.typesafe.config.{ConfigFactory, Config}
 import org.apache.spark.{SparkContext, SparkConf}
-import responses.JobStates
 
 /**
  * Created by raduchilom on 5/4/15.
@@ -33,7 +33,7 @@ object ExecuteDownload extends App {
 
 
     var jobFinal = sjrc.getJob(job.jobId, job.contextName)
-    while (jobFinal.status.equals(JobStates.RUNNING.toString())) {
+    while (jobFinal.status.equals(JobState.Running.toString())) {
       Thread.sleep(1000)
       jobFinal = sjrc.getJob(job.jobId, job.contextName)
     }

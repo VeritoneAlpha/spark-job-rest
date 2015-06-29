@@ -1,48 +1,17 @@
 package persistence.schema
 
+import api.entities.JobDetails
 import com.typesafe.config.Config
-import org.joda.time._
-import persistence.PersistentEnumeration
 import persistence.slickWrapper.Driver.api._
-
-object JobStatus extends PersistentEnumeration {
-  type JobStatus = Value
-  val Submitted = Value("submitted")
-  val Queued = Value("queued")
-  val Running = Value("running")
-  val Finished = Value("finished")
-  val Failed = Value("failed")
-}
-
-import persistence.schema.JobStatus._
-
-/**
- * Job entity
- * @param contextId link to context
- * @param status job status
- * @param startTime job start timestamp
- * @param stopTime job stop timestamp
- * @param runningClass classpath to class where job should be submitted
- * @param submittedConfig job config submitted to job server
- * @param finalConfig config finally passed to job
- * @param submitTime timestamp when jab was submitted
- * @param id job ID
- */
-case class JobEntity(contextId: WEAK_LINK,
-               startTime: Option[Long],
-               stopTime: Option[Long],
-               runningClass: String,
-               submittedConfig: Config,
-               finalConfig: Option[Config],
-               status: JobStatus = Submitted,
-               submitTime: Long = new DateTime(DateTimeZone.UTC).getMillis,
-               id: ID = nextId)
+import api.types._
+import api.entities.JobState._
 
 /**
  * Jobs table stores information about jobs history
  * @param tag table tag name
  */
-class Jobs(tag: Tag) extends Table[JobEntity] (tag, jobsTable) {
+class Jobs(tag: Tag) extends Table[JobDetails] (tag, jobsTable) {
+  import ColumnTypeImplicits._
 
   def id = column[ID]("JOB_ID", O.PrimaryKey)
   def contextId = column[ID]("CONTEXT_ID")
@@ -51,10 +20,10 @@ class Jobs(tag: Tag) extends Table[JobEntity] (tag, jobsTable) {
   def runningClass = column[String]("RUNNING_CLASS")
   def submittedConfig = column[Config]("SUBMITTED_CONFIG", O.SqlType(configSQLType))
   def finalConfig = column[Option[Config]]("FINAL_CONFIG", O.SqlType(configSQLType))
-  def status = column[JobStatus]("STATUS")
+  def status = column[JobState]("STATUS")
   def submitTime = column[Long]("SUBMIT_TIME")
 
-  def * = (contextId.?, startTime, stopTime, runningClass, submittedConfig, finalConfig, status, submitTime, id) <> (JobEntity.tupled, JobEntity.unapply)
+  def * = (contextId.?, startTime, stopTime, runningClass, submittedConfig, finalConfig, status, submitTime, id) <> (JobDetails.tupled, JobDetails.unapply)
 
   def context = foreignKey("CONTEXT_FK", contextId, contexts)(
     _.id,
