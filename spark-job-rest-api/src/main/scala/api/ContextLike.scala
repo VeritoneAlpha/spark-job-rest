@@ -25,7 +25,7 @@ trait ContextLike {
    */
   def validateJob(job: SparkJobBase): SparkJobValidation =
     if (isValidJob(job))
-      SparkJobValid()
+      SparkJobValid
     else
       SparkJobInvalid(s"Job ${job.toString} doesn't match context $this.")
 

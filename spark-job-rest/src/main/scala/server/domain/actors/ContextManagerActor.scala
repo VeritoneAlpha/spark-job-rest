@@ -1,20 +1,19 @@
 package server.domain.actors
 
-import java.util
 import java.io.File
+import java.util
 
 import akka.actor.{Actor, ActorRef, ActorSelection, Props}
 import akka.pattern.ask
-import api.entities.{Jars, ContextState, ContextDetails}
+import api.entities.ContextState.Running
+import api.entities.{ContextDetails, ContextState, Jars}
+import api.responses.{Context, Contexts}
+import api.types._
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.commons.lang.exception.ExceptionUtils
 import org.slf4j.LoggerFactory
-import persistence.schema._
-import api.types._
-import api.entities.ContextState.Running
-import persistence.services.ContextPersistenceService.{updateContextState, setContextSparkUiPort}
+import persistence.services.ContextPersistenceService.{insertContext, setContextSparkUiPort, updateContextState}
 import persistence.slickWrapper.Driver.api._
-import api.responses.{Context, Contexts}
 import server.domain.actors.ContextManagerActor._
 import server.domain.actors.JarActor.{GetJarsPathForAll, ResultJarsPathForAll}
 import utils.ActorUtils
@@ -24,7 +23,7 @@ import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.sys.process.{Process, ProcessBuilder}
-import scala.util.Success
+import scala.util.{Failure, Success}
 
 /**
  * Context management messages
@@ -108,17 +107,15 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef, connectionP
             val actorRef = context.actorSelection(ActorUtils.getContextActorAddress(contextName, host, port))
 
             // Persist context state and obtain context ID
-            val contextEntity = ContextDetails(contextName, config, Some(mergedConfig), Jars.fromString(jars))
-            val saveContextFuture = db.run(contexts += contextEntity)
+            val contextDetails = ContextDetails(contextName, config, Some(mergedConfig), Jars.fromString(jars))
 
-            // Initialize context
-            saveContextFuture onComplete {
-              case _ => sendInitMessage(contextName, contextEntity.id, port, actorRef, webSender, mergedConfig, pathForSpark)
-            }
-
-            // Catch persistence error
-            saveContextFuture onFailure {
-              case e: Throwable =>
+            insertContext(contextDetails, db) onComplete {
+              // Initialize context if successfully inserted to database
+              case Success(_) =>
+                // Initialize context
+                sendInitMessage(contextName, contextDetails.id, port, actorRef, webSender, mergedConfig, pathForSpark)
+              // Catch persistance error
+              case Failure(e: Throwable) =>
                 log.error(s"Failed! ${ExceptionUtils.getStackTrace(e)}")
                 webSender ! e
               case reason =>
@@ -126,7 +123,7 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef, connectionP
                 webSender ! ContextActor.FailedInit(s"Can't save context to database: $reason.")
             }
         } onFailure {
-          case e: Exception =>
+          case e: Throwable =>
             log.error(s"Failed! ${ExceptionUtils.getStackTrace(e)}")
             webSender ! e
         }
@@ -197,7 +194,7 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef, connectionP
 
     context.system.scheduler.scheduleOnce(sleepTime.millis) {
       val isAwakeFuture = context.actorOf(ReTry.props(tries, retryTimeOut, retryInterval, actorRef)) ? IsAwake
-      isAwakeFuture.map {
+      isAwakeFuture map {
         case isAwake =>
           log.info(s"Remote context actor is awaken: $isAwake")
           val initializationFuture = actorRef ? ContextActor.Initialize(contextName, contextId, connectionProviderActor, config, jarsForSpark)

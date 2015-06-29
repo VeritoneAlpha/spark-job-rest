@@ -11,7 +11,7 @@ sealed trait SparkJobValidation {
     case x => x
   }
 }
-case class SparkJobValid() extends SparkJobValidation
+case object SparkJobValid extends SparkJobValidation
 case class SparkJobInvalid(reason: String) extends SparkJobValidation
 
 /**

@@ -8,7 +8,7 @@ import server.domain.actors.messages._
 import scala.concurrent.Await
 
 object DatabaseUtils {
-  implicit val timeout = durations.defaultAskTimeout
+  implicit val timeout = durations.defaultRemoteAskTimeout
 
   /**
    * Synchronously requests connection from connection provider actor which may be either

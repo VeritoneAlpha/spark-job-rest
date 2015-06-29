@@ -1,15 +1,15 @@
 package com.job
 
+import api.{SparkJob, SparkJobInvalid, SparkJobValid, SparkJobValidation}
 import com.typesafe.config.Config
 import org.apache.spark.SparkContext
-import api.{SparkJobInvalid, SparkJobValid, SparkJobValidation, SparkJob}
 import org.slf4j.LoggerFactory
 
 import scala.collection.mutable.ListBuffer
-import scala.util.{Success, Failure, Try}
+import scala.util.{Failure, Success, Try}
 
 /**
- * Created by raduc on 03/11/14.
+ * Simple job which loads files from S3 and looks for errors there.
  */
 class S3DownloadJob extends SparkJob {
 
@@ -22,13 +22,7 @@ class S3DownloadJob extends SparkJob {
     val numPartitions = jobConfig.getInt("num.partitions")
     val outputFolder = jobConfig.getString("fs.output")
 
-//    slow for a large number of files
-//    val fileList = S3Utils.getFiles(bucketName)
-//    val files = sc.parallelize(fileList, numPartitions)
-
     val filesRdd = S3Utils.getFilesDistributed(bucketName, sc, numPartitions)
-//    known bug in spark 1.1.0
-//    filesRdd.partitions
     val files = filesRdd.repartition(numPartitions)
 
     log.info(s"Number of partitions: ${files.partitions.length}")
@@ -53,23 +47,22 @@ class S3DownloadJob extends SparkJob {
         case Failure(e) => true
       }
     }.collect()
-    log.warn(s"There were ${errorFiles.size} files with error")
+    log.warn(s"There were ${errorFiles.length} files with error")
     errorFiles.foreach(t => log.error("", t._1.get))
 
-    if(errorFiles.size == 0){
-      s"Number of failed files: ${errorFiles.size}"
+    if (errorFiles.length == 0) {
+      s"Number of failed files: ${errorFiles.length}"
     } else {
       errorFiles
     }
-
   }
 
   override def validate(sc: SparkContext, config: Config): SparkJobValidation = {
-      if(!config.hasPath("s3.bucket")) return SparkJobInvalid("The \"s3.bucket\" parameter is missing.")
-      if(!config.hasPath("fs.output")) return SparkJobInvalid("The \"fs.output\" parameter is missing.")
-      if(!config.hasPath("num.partitions")) return SparkJobInvalid("The \"num.partitions\" parameter is missing.")
+    if(!config.hasPath("s3.bucket")) return SparkJobInvalid("The \"s3.bucket\" parameter is missing.")
+    if(!config.hasPath("fs.output")) return SparkJobInvalid("The \"fs.output\" parameter is missing.")
+    if(!config.hasPath("num.partitions")) return SparkJobInvalid("The \"num.partitions\" parameter is missing.")
 
-    SparkJobValid()
+    SparkJobValid
   }
 
 }

@@ -68,6 +68,12 @@ if [ "$PORT" != "" ]; then
   CONFIG_OVERRIDES+="-Dspark.jobserver.port=$PORT "
 fi
 
+# Need to explicitly include app dir in classpath so logging configs can be found
+CLASSPATH="${parentdir}/spark-job-rest.jar:${appdir}/..:${appdir}/../resources"
+
+# Log classpath
+echo "CLASSPATH = ${CLASSPATH}" >> "${LOG_DIR}/${LOG_FILE}"
+
 # The following should be exported in order to be accessible in Config substitutions
 export SPARK_HOME
 export APP_DIR
@@ -82,7 +88,8 @@ export SPARK_JOB_REST_CONTEXT_START_SCRIPT="${appdir}/../resources/context_start
   --class $MAIN \
   --driver-memory $DRIVER_MEMORY \
   --conf "spark.executor.extraJavaOptions=${LOGGING_OPTS}" \
+  --conf "spark.driver.extraClassPath=${CLASSPATH}" \
   --driver-java-options "${GC_OPTS} ${JAVA_OPTS} ${LOGGING_OPTS} ${CONFIG_OVERRIDES}" \
-  $@ $parentdir/spark-job-rest.jar \
+  $@ "${parentdir}/spark-job-rest.jar" \
   $conffile >> "${LOG_DIR}/${LOG_FILE}" 2>&1 &
 echo $! > "${appdir}/server.pid"

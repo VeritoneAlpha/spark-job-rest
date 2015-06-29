@@ -67,6 +67,29 @@ if [ "$PORT" != "" ]; then
   CONFIG_OVERRIDES+="-Dspark.jobserver.port=$PORT "
 fi
 
+# Need to explicitly include app dir in classpath so logging configs can be found
+CLASSPATH="${parentdir}/spark-job-rest.jar:$parentdir:$parentdir/resources:$appdir" >> "${LOG_DIR}/${LOG_FILE}"
+
+# Replace ":" with commas in classpath
+JARS=`echo "${classpathParam}" | sed -e 's/:/,/g'`
+
+# Include extra classpath if not empty
+if [ ! "${EXTRA_CLASSPATH}" = "" ]; then
+    EXTRA_JARS=`echo "${EXTRA_CLASSPATH}" | sed -e 's/:/,/g'`
+    JARS="${JARS},${EXTRA_JARS}"
+fi
+
+# Prepend with SQL extras if exists
+SQL_EXTRAS="${parentdir}/spark-job-rest-sql.jar"
+if [ -f "${SQL_EXTRAS}" ]; then
+    CLASSPATH="${SQL_EXTRAS}:${CLASSPATH}"
+    JARS="${SQL_EXTRAS},${JARS}"
+fi
+
+# Log classpath and jars
+echo "CLASSPATH = ${CLASSPATH}" >> "${LOG_DIR}/${LOG_FILE}"
+echo "JARS = ${JARS}" >> "${LOG_DIR}/${LOG_FILE}"
+
 # The following should be exported in order to be accessible in Config substitutions
 export SPARK_HOME
 export APP_DIR
@@ -77,14 +100,6 @@ export CONTEXTS_BASE_DIR
 export SPARK_JOB_REST_CONTEXT_NAME="$contextName"
 export SPARK_JOB_REST_CONTEXT_PORT="$port"
 
-# job server jar needs to appear first so its deps take higher priority
-# need to explicitly include app dir in classpath so logging configs can be found
-#CLASSPATH="$parentdir/resources:$appdir:$parentdir/spark-job-rest.jar:$classpathParam:$EXTRA_CLASSPATH"
-#echo "CLASSPATH = ${CLASSPATH}"
-
-JARS=`echo "${classpathParam}:${EXTRA_CLASSPATH}" | sed -e 's/:/,/g'`
-echo "JARS = ${JARS}"
-
 # Create context process directory
 mkdir -p "${processDir}"
 
@@ -92,10 +107,12 @@ cd "${processDir}"
 
 # Start application using `spark-submit` which takes cake of computing classpaths
 "${SPARK_HOME}/bin/spark-submit" \
+  --verbose \
   --class $MAIN \
   --driver-memory $xmxMemory \
   --conf "spark.executor.extraJavaOptions=${LOGGING_OPTS}" \
+  --conf "spark.driver.extraClassPath=${CLASSPATH}" \
   --driver-java-options "${GC_OPTS} ${JAVA_OPTS} ${LOGGING_OPTS} ${CONFIG_OVERRIDES}" \
-  --jars "${JARS}" $parentdir/spark-job-rest.jar \
+  --jars "${JARS}" "${parentdir}/spark-job-rest.jar" \
   $conffile >> "${LOG_DIR}/${LOG_FILE}" 2>&1 &
 echo $! > "${processDir}/context.pid"

@@ -1,11 +1,11 @@
 package com.job
 
+import api.{SparkJob, SparkJobInvalid, SparkJobValid, SparkJobValidation}
 import com.typesafe.config.Config
 import org.apache.spark.SparkContext
-import api.{SparkJobInvalid, SparkJobValid, SparkJobValidation, SparkJob}
 
 /**
- * Created by raduc on 03/11/14.
+ * Very basic Spark Job REST job example
  */
 class SparkJobImplemented extends SparkJob
 {
@@ -20,6 +20,6 @@ class SparkJobImplemented extends SparkJob
   }
 
   override def validate(sc: SparkContext, config: Config): SparkJobValidation = {
-    if(config.hasPath("input")) SparkJobValid() else SparkJobInvalid("The input parameter is missing.")
+    if(config.hasPath("input")) SparkJobValid else SparkJobInvalid("The input parameter is missing.")
   }
 }

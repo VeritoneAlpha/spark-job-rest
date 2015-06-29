@@ -1,6 +1,6 @@
 package context
 
-import api.{ContextLike, SparkJobBase, SparkSqlJob}
+import api.{ContextLike, SparkHiveJob, SparkJobBase}
 import com.typesafe.config.Config
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.hive.HiveContext
@@ -17,7 +17,7 @@ class HiveContextFactory extends SQLContextFactory {
     logger.info(s"Creating Hive context for Spark context $sc.")
     new HiveContext(sc) with ContextLike {
       val contextClass = classOf[HiveContext].getName
-      def isValidJob(job: SparkJobBase) = job.isInstanceOf[SparkSqlJob]
+      def isValidJob(job: SparkJobBase) = job.isInstanceOf[SparkHiveJob]
       def stop() = sparkContext.stop()
     }
   }

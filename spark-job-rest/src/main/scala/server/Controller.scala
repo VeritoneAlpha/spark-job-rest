@@ -4,12 +4,11 @@ import akka.actor.{ActorRef, ActorSystem}
 import akka.pattern.ask
 import akka.util.Timeout
 import api.entities.ContextDetails
-import api.json.JsonProtocol
+import api.json.JsonProtocol._
+import api.responses._
 import com.typesafe.config.{Config, ConfigFactory}
 import org.slf4j.LoggerFactory
-import JsonProtocol._
 import persistence.services.ContextPersistenceService.{allContexts, contextById}
-import api.responses._
 import server.domain.actors.ContextActor.FailedInit
 import server.domain.actors.ContextManagerActor._
 import server.domain.actors.JarActor._
@@ -154,7 +153,7 @@ class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor:
                     resultFuture.map {
                       case job: Job => ctx.complete(StatusCodes.OK, job)
                       case NoSuchContext => ctx.complete(StatusCodes.BadRequest, ErrorResponse("No such context."))
-                      case e: Exception => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
+                      case e: Throwable => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
                       case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
                     }
                   case Failure(e) => ctx.complete(StatusCodes.BadRequest, ErrorResponse("Invalid parameter: " + e.getMessage))
@@ -205,8 +204,7 @@ class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor:
                   ctx.complete(StatusCodes.OK, contexts.map(
                     context => Context.fromContextDetails(context)
                   ))
-                case Failure(e: Exception) => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
-                case error: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(error.toString))
+                case Failure(e: Throwable) => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
               }
             }
           }
@@ -270,7 +268,7 @@ class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor:
               val resultFuture = contextManagerActor ? GetAllContextsForClient()
               resultFuture.map {
                 case contexts: Contexts => ctx.complete(StatusCodes.OK, contexts)
-                case e: Exception => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
+                case e: Throwable => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
                 case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
               }
             }

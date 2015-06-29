@@ -10,6 +10,7 @@ PROJECT_DIR="${CDIR}/../../../.."
 
 SJR_IS_REMOTE_DEPLOY=${SJR_IS_REMOTE_DEPLOY-false}
 SJR_PACKAGE_PATH=${SJR_PACKAGE_PATH-${PROJECT_DIR}/spark-job-rest/target/spark-job-rest.tar.gz}
+SJR_EXTRAS_PATH=${SJR_EXTRAS_PATH-${PROJECT_DIR}/spark-job-rest-sql/target/spark-job-rest-sql.tar.gz}
 
 SJR_DEPLOY_PATH="${SJR_DEPLOY_PATH}"                 # Empty variable will cause error in action
 SJR_REMOTE_DEPLOY_PATH="${SJR_REMOTE_DEPLOY_PATH}"   # Overrides SJR_DEPLOY_PATH in case of remote deploy
@@ -89,6 +90,7 @@ function upload_tarball() {
     if [ "${SJR_IS_REMOTE_DEPLOY}" = "true" ]; then
         echo "Upload tarball"
         scp "${SSH_KEY_EXPRESSION}" "$SJR_PACKAGE_PATH" "${SJR_DEPLOY_HOST}":"/tmp/"
+        scp "${SSH_KEY_EXPRESSION}" "$SJR_EXTRAS_PATH" "${SJR_DEPLOY_HOST}":"/tmp/"
     fi
 }
 
@@ -97,8 +99,10 @@ function extract_package() {
     exec_cmd "mkdir -p ${SJR_DEPLOY_PATH}"
     if [ "${SJR_IS_REMOTE_DEPLOY}" = "true" ]; then
         exec_remote "tar zxf /tmp/spark-job-rest.tar.gz -C ${SJR_DEPLOY_PATH} --strip-components=1"
+        exec_remote "tar zxf /tmp/spark-job-rest-sql.tar.gz -C ${SJR_DEPLOY_PATH} --strip-components=1"
     else
         exec_local "tar zxf ${SJR_PACKAGE_PATH} -C ${SJR_DEPLOY_PATH} --strip-components=1"
+        exec_local "tar zxf ${SJR_EXTRAS_PATH} -C ${SJR_DEPLOY_PATH} --strip-components=1"
     fi
 }
 

@@ -2,11 +2,12 @@ package persistence.services
 
 import api.entities.ContextDetails
 import api.entities.ContextState._
+import api.types._
+import org.slf4j.LoggerFactory
+import persistence.schema.ColumnTypeImplicits._
 import persistence.schema._
 import persistence.slickWrapper.Driver.api._
 import server.domain.actors.durations._
-import api.types._
-import persistence.schema.ColumnTypeImplicits._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Await, Future}
@@ -15,6 +16,19 @@ import scala.concurrent.{Await, Future}
  * Collection of methods for persisting context entities
  */
 object ContextPersistenceService {
+  val log = LoggerFactory.getLogger(getClass)
+
+  /**
+   * Inserts new context to database
+   * @param context context entity to persist
+   * @param db database connection
+   * @return future of affected columns
+   */
+  def insertContext(context: ContextDetails, db: Database): Future[Int] = {
+    log.info(s"Inserting context ${context.id}.")
+    db.run(contexts += context)
+  }
+
   /**
    * Synchronously updates state for context with specified id.
    * Does not replace [[Error]] or [[Terminated]] states.
@@ -24,6 +38,7 @@ object ContextPersistenceService {
    * @param db database connection
    */
   def updateContextState(contextId: ID, newState: ContextState, db: Database, newDetails: String = ""): Unit = {
+    log.info(s"Updating context $contextId state to $newState with details: $newDetails")
     val affectedContext = for { c <- contexts if c.id === contextId && c.state =!= Failed && c.state =!= Terminated } yield c
     val contextStateUpdate = affectedContext map (x => (x.state, x.details)) update (newState, newDetails)
     Await.ready(db.run(contextStateUpdate), defaultDbTimeout)
@@ -36,8 +51,9 @@ object ContextPersistenceService {
    * @param db database connection
    */
   def setContextSparkUiPort(contextId: ID, port: String, db: Database): Unit = {
+    log.info(s"Updating context $contextId Spark UI port to $port.")
     val affectedContext = for { c <- contexts if c.id === contextId } yield c
-    val updateQuery = affectedContext map (_.id) update contextId
+    val updateQuery = affectedContext map (_.sparkUiPort) update Some(port)
     Await.ready(db.run(updateQuery), defaultDbTimeout)
   }
 

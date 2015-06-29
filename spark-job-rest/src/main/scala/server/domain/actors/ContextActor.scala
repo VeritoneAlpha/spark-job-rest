@@ -2,16 +2,16 @@ package server.domain.actors
 
 import akka.actor.{Actor, ActorRef, Props, Stash, Terminated}
 import api._
-import api.entities.{JobState, ContextState}
+import api.entities.{ContextState, JobState}
+import api.responses.Job
+import api.types.ID
 import com.google.gson.Gson
 import com.typesafe.config.{Config, ConfigValueFactory}
 import context.JobContextFactory
 import org.apache.commons.lang.exception.ExceptionUtils
 import org.slf4j.LoggerFactory
-import api.types.ID
 import persistence.services.ContextPersistenceService.updateContextState
 import persistence.slickWrapper.Driver.api._
-import api.responses.Job
 import server.domain.actors.ContextActor._
 import server.domain.actors.JobActor._
 import utils.ActorUtils
@@ -107,31 +107,26 @@ class ContextActor(localConfig: Config) extends Actor with Stash {
       contextName = name
       contextId = id
 
-      log.info(s"Received InitializeContext message : contextName=$contextName")
       log.info("Initializing context " + contextName)
 
-      // Request connection parameters and establish connection to database
-      connectionProvider = context.actorOf(Props(new DatabaseConnectionActor(remoteConnectionProvider)))
-      db = dbConnection(connectionProvider)
-      log.info(s"Obtained connection to database: $db")
-
+      // Do all unsafe stuff
       try {
-        defaultConfig = config.withValue("context.jars", ConfigValueFactory.fromAnyRef(jarsForSpark.asJava))
-        jobContext = JobContextFactory.makeContext(defaultConfig, contextName)
-        updateContextState(contextId, ContextState.Running, db, s"Created job context: $jobContext")
+        // Request connection parameters and establish connection to database
+        initDbConnection(remoteConnectionProvider)
+
+        // Initialize context
+        initContext(config, jarsForSpark)
         sender ! Initialized()
-        log.info("Successfully initialized context " + contextName)
+
+        // Switch to initialised mode and process all messages
+        become(initialized)
+        unstashAll()
       } catch {
-        case e: Exception =>
+        case e: Throwable =>
           log.error("Exception while initializing", e)
-          updateContextState(contextId, ContextState.Failed, db, s"Context creation exception: $e")
           sender ! FailedInit(ExceptionUtils.getStackTrace(e))
           gracefullyShutdown()
       }
-
-      // Switch to initialised mode and process all messages
-      become(initialized)
-      unstashAll()
   }
 
   /**
@@ -157,14 +152,14 @@ class ContextActor(localConfig: Config) extends Actor with Stash {
           val sparkJob = runnableClass.newInstance.asInstanceOf[SparkJobBase]
 
           jobContext.validateJob(sparkJob) match {
-            case SparkJobValid() => log.info(s"Job $uuid passed context validation.")
+            case SparkJobValid => log.info(s"Job $uuid passed context validation.")
             case SparkJobInvalid(message) => throw new IllegalArgumentException(s"Invalid job $uuid: $message")
           }
 
           val jobConfigValidation = sparkJob.validate(jobContext.asInstanceOf[sparkJob.C], jobConfig.withFallback(defaultConfig))
           jobConfigValidation match {
             case SparkJobInvalid(message) => throw new IllegalArgumentException(message)
-            case SparkJobValid() => log.info("Job config validation passed.")
+            case SparkJobValid => log.info("Job config validation passed.")
           }
 
           sparkJob.runJob(jobContext.asInstanceOf[sparkJob.C], jobConfig.withFallback(defaultConfig))
@@ -218,6 +213,29 @@ class ContextActor(localConfig: Config) extends Actor with Stash {
 
     case x @ _ =>
       log.info(s"Received UNKNOWN message type $x")
+  }
+
+  /**
+   * Initializes connection to database
+   * @param remoteConnectionProvider reference to connection provider actor
+   */
+  def initDbConnection(remoteConnectionProvider: ActorRef): Unit = {
+    connectionProvider = context.actorOf(Props(new DatabaseConnectionActor(remoteConnectionProvider)))
+    db = dbConnection(connectionProvider)
+    log.info(s"Obtained connection to database: $db")
+  }
+
+  /**
+   * Prepares config and initializes context
+   * @param config submitted context
+   * @param jarsForSpark jars to be included
+   * @throws Throwable anything that may happen during context creation
+   */
+  def initContext(config: Config, jarsForSpark: List[String]): Unit = {
+    defaultConfig = config.withValue("context.jars", ConfigValueFactory.fromAnyRef(jarsForSpark.asJava))
+    jobContext = JobContextFactory.makeContext(defaultConfig, contextName)
+    updateContextState(contextId, ContextState.Running, db, s"Created job context: $jobContext")
+    log.info("Successfully initialized context " + contextName)
   }
 
   def gracefullyShutdown() {

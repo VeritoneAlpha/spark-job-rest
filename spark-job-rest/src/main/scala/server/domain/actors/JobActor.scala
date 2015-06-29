@@ -5,19 +5,16 @@ import java.util.UUID
 import akka.actor.{Actor, ActorRef, ActorSelection}
 import akka.pattern.ask
 import api.entities.JobState
+import api.responses.{Job, Jobs}
 import com.typesafe.config.Config
-import org.joda.time.{DateTimeZone, DateTime}
-import api.responses.{Jobs, Job}
-import server.domain.actors.ContextManagerActor.{GetAllContexts, GetContext, NoSuchContext}
+import org.joda.time.{DateTime, DateTimeZone}
 import org.slf4j.LoggerFactory
+import server.domain.actors.ContextManagerActor.{GetAllContexts, GetContext, NoSuchContext}
 import server.domain.actors.JobActor._
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.util.{Success, Failure}
-
-/**
- * Created by raduc on 03/11/14.
- */
+import scala.util.{Failure, Success}
 
 
 object JobActor {
@@ -45,107 +42,95 @@ object JobActor {
 }
 
 
+/**
+ * Job actor responsible for job lifecycle.
+ * @param config job config
+ * @param contextManagerActor context manager
+ */
 class JobActor(config: Config, contextManagerActor: ActorRef) extends Actor {
 
   val log = LoggerFactory.getLogger(getClass)
 
   override def receive: Receive = {
-    case job: RunJob => {
+    case job: RunJob =>
       log.info(s"Received RunJob message : runningClass=${job.runningClass} context=${job.contextName} uuid=${job.uuid}")
 
-      val fromWebApi = sender
+      val fromWebApi = sender()
 
       val future = contextManagerActor ? GetContext(job.contextName)
       future onSuccess {
-        case contextRef: ActorSelection => {
+        case contextRef: ActorSelection =>
 
           import JobState.Running
           fromWebApi ! Job(job.uuid, job.contextName, Running.toString, "", DateTime.now(DateTimeZone.UTC).getMillis)
 
           log.info(s"Sending RunJob message to actor $contextRef")
           contextRef ! job
-        }
         case NoSuchContext => fromWebApi ! NoSuchContext
         case e @ _ => log.warn(s"Received UNKNOWN TYPE when asked for context. Type received $e")
       }
       future onFailure {
-        case e => {
+        case e =>
           fromWebApi ! e
           log.error(s"An error has occured.", e)
-        }
       }
-    }
 
 
-    case jobEnquiry:JobStatusEnquiry => {
+    case jobEnquiry:JobStatusEnquiry =>
       log.info(s"Received JobStatusEnquiry message : uuid=${jobEnquiry.jobId}")
-      val fromWebApi = sender
-
-
+      val fromWebApi = sender()
       val contextActorFuture = contextManagerActor ? GetContext(jobEnquiry.contextName)
 
       contextActorFuture onSuccess {
-        case contextRef: ActorSelection => {
+        case contextRef: ActorSelection =>
 
           val enquiryFuture = contextRef ? jobEnquiry
 
-          enquiryFuture onSuccess{
-            case state:JobStatus => {
+          enquiryFuture onSuccess {
+            case state: JobStatus =>
               log.info("Job with id: " + jobEnquiry.jobId + "  has state : " + state)
               fromWebApi ! state
-            }
-            case x:Any => {
+            case x: Any =>
               log.info(s"Received $x TYPE when asked for job enquiry.")
               fromWebApi ! x
-            }
           }
 
           enquiryFuture onFailure {
-            case e => {
+            case e =>
               fromWebApi ! e
               log.error(s"An error has occured.", e)
-            }
           }
-        }
         case NoSuchContext => fromWebApi ! NoSuchContext
         case e @ _ => log.warn(s"Received UNKNOWN TYPE when asked for context. Type received $e")
       }
 
       contextActorFuture onFailure {
-        case e => {
+        case e =>
           fromWebApi ! e
           log.error(s"An error has occured.", e)
-        }
       }
-    }
 
-    case GetAllJobsStatus() => {
+    case GetAllJobsStatus() =>
+      val webApi = sender()
+      val allContextFuture = contextManagerActor ? GetAllContexts()
 
-      val webApi = sender
-      val future = contextManagerActor ? GetAllContexts()
-
-      val future2: Future[Future[List[List[Job]]]] = future map {
-        case contexts: List[ActorSelection] => {
+      val future2: Future[Future[List[List[Job]]]] = allContextFuture map {
+        case contexts: List[ActorSelection] =>
           val contextsList = contexts.map { context =>
-            val oneContextFuture = context ? GetAllJobsStatus()
-            oneContextFuture.map{
+            context ? GetAllJobsStatus() map {
               case jobs: List[Job] => jobs
             }
           }
           Future.sequence(contextsList)
-        }
       }
       val future3: Future[List[List[Job]]] = future2.flatMap(identity)
       val future4: Future[List[Job]] = future3.map(x => x.flatMap(identity))
 
       future4 onComplete {
-        case Success(jobsList:List[Job]) => {
+        case Success(jobsList:List[Job]) =>
           webApi ! Jobs(jobsList.toArray.sortWith(_.startTime > _.startTime))
-        }
         case Failure(e) => webApi ! e
       }
-
-    }
   }
 }
 
