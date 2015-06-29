@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory
 import persistence.schema._
 import api.types._
 import api.entities.ContextState.Running
-import persistence.services.ContextPersistenceService.updateContextState
+import persistence.services.ContextPersistenceService.{updateContextState, setContextSparkUiPort}
 import persistence.slickWrapper.Driver.api._
 import api.responses.{Context, Contexts}
 import server.domain.actors.ContextManagerActor._
@@ -204,6 +204,7 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef, connectionP
             case success: ContextActor.Initialized =>
               log.info(s"Context '$contextName' initialized: $success")
               contextMap += contextName -> ContextInfo(contextName, contextId, sparkUiPort, actorRef)
+              setContextSparkUiPort(contextId, sparkUiPort, db)
               sender ! Context(contextName, contextId, Running, sparkUiPort)
             case error @ ContextActor.FailedInit(reason) =>
               log.error(s"Init failed for context $contextName", reason)

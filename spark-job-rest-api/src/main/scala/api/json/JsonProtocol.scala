@@ -69,5 +69,5 @@ object JsonProtocol extends DefaultJsonProtocol {
     }
   }
 
-  implicit val contextEntityJsonFormat = jsonFormat7(ContextDetails)
+  implicit val contextEntityJsonFormat = jsonFormat8(ContextDetails)
 }

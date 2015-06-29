@@ -8,7 +8,6 @@ import api.json.JsonProtocol
 import com.typesafe.config.{Config, ConfigFactory}
 import org.slf4j.LoggerFactory
 import JsonProtocol._
-import persistence.services.ContextPersistenceService
 import persistence.services.ContextPersistenceService.{allContexts, contextById}
 import api.responses._
 import server.domain.actors.ContextActor.FailedInit
@@ -44,7 +43,7 @@ class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor:
   val webIp = getValueFromConfig(config, "appConf.web.services.ip", "0.0.0.0")
   val webPort = getValueFromConfig(config, "appConf.web.services.port", 8097)
 
-  val route = jobRoute ~ contextRoute ~ indexRoute ~ jarRoute
+  val route = jobRoute ~ contextRoute ~ contextHistoryRoute ~ indexRoute ~ jarRoute
 
   /**
    * Database connection received from connection provider [[server.domain.actors.DatabaseServerActor]]
@@ -178,6 +177,9 @@ class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor:
    * Contexts history returns extended information about all ever running contexts.
    */
   def contextHistoryRoute: Route = pathPrefix("history/contexts") {
+    /**
+     * Returns full information ([[ContextDetails]]) about given context by its ID.
+     */
     get {
       path(JavaUUID) { contextId =>
         corsFilter(List("*")) {
@@ -192,11 +194,17 @@ class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor:
       }
     } ~
       pathEnd {
+        /**
+         * Returns a list of all contexts (both active and inactive) in a form of [[Context]]
+         */
         get {
           corsFilter(List("*")) {
             respondWithMediaType(MediaTypes.`application/json`) { ctx =>
               allContexts(db) onComplete {
-                case Success(contexts: Array[ContextDetails]) => ctx.complete(StatusCodes.OK, contexts)
+                case Success(contexts: Array[ContextDetails]) =>
+                  ctx.complete(StatusCodes.OK, contexts.map(
+                    context => Context.fromContextDetails(context)
+                  ))
                 case Failure(e: Exception) => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
                 case error: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(error.toString))
               }

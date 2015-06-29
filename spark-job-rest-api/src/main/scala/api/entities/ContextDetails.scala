@@ -14,4 +14,4 @@ import api.types._
  * @param state context state
  * @param details detailed information about context state
  */
-case class ContextDetails(name: String, submittedConfig: Config, finalConfig: Option[Config], jars: Jars, state: ContextState = Requested, details: String = "", id: ID = nextIdentifier)
+case class ContextDetails(name: String, submittedConfig: Config, finalConfig: Option[Config], jars: Jars, state: ContextState = Requested, details: String = "", sparkUiPort: Option[String] = None, id: ID = nextIdentifier)

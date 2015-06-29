@@ -20,6 +20,7 @@ class Contexts(tag: Tag) extends Table[ContextDetails] (tag, contextsTable) {
   def jars = column[Jars]("JARS")
   def state = column[ContextState]("STATE")
   def details = column[String]("DETAILS", O.SqlType("VARCHAR(4096)"))
+  def sparkUiPort = column[Option[String]]("SPARK_UI_PORT")
 
-  def * = (name, submittedConfig, finalConfig, jars, state, details, id) <> (ContextDetails.tupled, ContextDetails.unapply)
+  def * = (name, submittedConfig, finalConfig, jars, state, details, sparkUiPort, id) <> (ContextDetails.tupled, ContextDetails.unapply)
 }

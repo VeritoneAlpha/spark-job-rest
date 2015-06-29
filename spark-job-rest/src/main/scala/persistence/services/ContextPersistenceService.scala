@@ -29,6 +29,18 @@ object ContextPersistenceService {
     Await.ready(db.run(contextStateUpdate), defaultDbTimeout)
   }
 
+  /**
+   * Synchronously updates Spark UI port for context with specified id.
+   * @param contextId context's ID
+   * @param port Spark UI port to set
+   * @param db database connection
+   */
+  def setContextSparkUiPort(contextId: ID, port: String, db: Database): Unit = {
+    val affectedContext = for { c <- contexts if c.id === contextId } yield c
+    val updateQuery = affectedContext map (_.id) update contextId
+    Await.ready(db.run(updateQuery), defaultDbTimeout)
+  }
+
   def contextById(contextId: ID, db: Database): Future[Option[ContextDetails]] = {
     db.run(contexts.filter(c => c.id === contextId).result).map {
       case Seq(context) => Some(context)
