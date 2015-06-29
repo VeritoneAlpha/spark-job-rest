@@ -1,11 +1,14 @@
 package api.responses
 
-import spray.json.DefaultJsonProtocol._
+import api.types.ID
+import api.entities.ContextState.ContextState
+import api.json.JsonProtocol._
 
-case class Context(contextName: String, sparkUiPort: String)
+
+case class Context(contextName: String, contextId: ID, state: ContextState, sparkUiPort: String)
 
 object Context {
-  implicit val logJson = jsonFormat2(apply)
+  implicit val logJson = jsonFormat4(apply)
 }
 
 case class Contexts(contexts: Array[Context])

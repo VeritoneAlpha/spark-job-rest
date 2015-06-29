@@ -10,6 +10,7 @@ import org.apache.commons.lang.exception.ExceptionUtils
 import org.slf4j.LoggerFactory
 import persistence.schema._
 import api.types._
+import api.entities.ContextState.Running
 import persistence.services.ContextPersistenceService.updateContextState
 import persistence.slickWrapper.Driver.api._
 import api.responses.{Context, Contexts}
@@ -168,14 +169,17 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef, connectionP
     case GetContextInfo(contextName) =>
       log.info(s"Received GetContext message : context=$contextName")
       if (contextMap contains contextName) {
-        sender ! Context(contextName, contextMap(contextName).sparkUiPort)
+        val ContextInfo(_, contextId, sparkUiPort, _) = contextMap(contextName)
+        sender ! Context(contextName, contextId, Running, sparkUiPort)
       } else {
         sender ! NoSuchContext
       }
 
     case GetAllContextsForClient() =>
       log.info(s"Received GetAllContexts message.")
-      sender ! Contexts(contextMap.values.map(contextInfo => Context(contextInfo.contextName, contextInfo.sparkUiPort)).toArray)
+      sender ! Contexts(contextMap.values.map {
+        case ContextInfo(contextName, contextId, sparkUiPort, _) => Context(contextName, contextId, Running, sparkUiPort)
+      }.toArray)
 
     case GetAllContexts() =>
       sender ! contextMap.values.map(_.referenceActor)
@@ -200,7 +204,7 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef, connectionP
             case success: ContextActor.Initialized =>
               log.info(s"Context '$contextName' initialized: $success")
               contextMap += contextName -> ContextInfo(contextName, contextId, sparkUiPort, actorRef)
-              sender ! Context(contextName, sparkUiPort)
+              sender ! Context(contextName, contextId, Running, sparkUiPort)
             case error @ ContextActor.FailedInit(reason) =>
               log.error(s"Init failed for context $contextName", reason)
               sender ! error
