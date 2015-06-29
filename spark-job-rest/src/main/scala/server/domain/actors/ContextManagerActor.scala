@@ -1,6 +1,7 @@
 package server.domain.actors
 
 import java.util
+import java.io.File
 
 import akka.actor.{Actor, ActorRef, ActorSelection, Props}
 import akka.pattern.ask
@@ -235,7 +236,7 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef, connectionP
   }
 
   def createProcessBuilder(contextName: String, port: Int, jarsForClasspath: String, config: Config): ProcessBuilder = {
-    val scriptPath = ContextManagerActor.getClass.getClassLoader.getResource("context_start.sh").getPath
+    val scriptPath = new File(System.getenv("SPARK_JOB_REST_CONTEXT_START_SCRIPT")).getPath
     val xmxMemory = getValueFromConfig(config, "driver.xmxMemory", "1g")
 
     // Create context process directory

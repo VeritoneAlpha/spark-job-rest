@@ -16,8 +16,8 @@ object MainContext {
   val log = LoggerFactory.getLogger(getClass)
 
   def main(args: Array[String]) {
-    val contextName = args(0)
-    val port = args(1).toInt
+    val contextName = System.getenv("SPARK_JOB_REST_CONTEXT_NAME")
+    val port = System.getenv("SPARK_JOB_REST_CONTEXT_PORT").toInt
 
     log.info(s"Started new process for contextName = $contextName with port = $port")
 

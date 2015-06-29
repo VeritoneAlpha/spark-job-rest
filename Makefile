@@ -49,7 +49,7 @@ remote-stop:
 remote-log:
 	@$(REMOTE_PARAMS) $(CURRENT_DIR)/spark-job-rest/src/main/scripts/deploy.sh log
 
-start:
+start: stop
 	@SJR_DEPLOY_PATH=$(SJR_DEPLOY_PATH) \
     $(CURRENT_DIR)/spark-job-rest/src/main/scripts/deploy.sh start
 

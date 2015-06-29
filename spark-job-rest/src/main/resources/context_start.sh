@@ -52,12 +52,16 @@ fi
 
 mkdir -p $LOG_DIR
 
+LOG_FILE="$contextName.log"
 LOGGING_OPTS="-Dlog4j.configuration=log4j.properties
-              -DLOG_DIR=$LOG_DIR
-              -DLOG_FILE=$contextName.log"
+              -DLOG_DIR=${LOG_DIR}
+              -DLOG_FILE=${LOG_FILE}"
 
 # For Mesos
-#CONFIG_OVERRIDES="-Dspark.executor.uri=$SPARK_EXECUTOR_URI "
+CONFIG_OVERRIDES=""
+if [ -n "$SPARK_EXECUTOR_URI" ]; then
+  CONFIG_OVERRIDES="-Dspark.executor.uri=$SPARK_EXECUTOR_URI "
+fi
 # For Mesos/Marathon, use the passed-in port
 if [ "$PORT" != "" ]; then
   CONFIG_OVERRIDES+="-Dspark.jobserver.port=$PORT "
@@ -69,13 +73,29 @@ export APP_DIR
 export JAR_PATH
 export CONTEXTS_BASE_DIR
 
+# Context application settings
+export SPARK_JOB_REST_CONTEXT_NAME="$contextName"
+export SPARK_JOB_REST_CONTEXT_PORT="$port"
+
 # job server jar needs to appear first so its deps take higher priority
 # need to explicitly include app dir in classpath so logging configs can be found
-CLASSPATH="$parentdir/resources:$appdir:$parentdir/spark-job-rest.jar:$classpathParam:$EXTRA_CLASSPATH:$($SPARK_HOME/bin/compute-classpath.sh)"
-echo "CLASSPATH = ${CLASSPATH}"
+#CLASSPATH="$parentdir/resources:$appdir:$parentdir/spark-job-rest.jar:$classpathParam:$EXTRA_CLASSPATH"
+#echo "CLASSPATH = ${CLASSPATH}"
+
+JARS=`echo "${classpathParam}:${EXTRA_CLASSPATH}" | sed -e 's/:/,/g'`
+echo "JARS = ${JARS}"
 
 # Create context process directory
-mkdir -p "$processDir"
+mkdir -p "${processDir}"
 
-cd "$processDir"
-exec java -cp $CLASSPATH $GC_OPTS $JAVA_OPTS $LOGGING_OPTS $CONFIG_OVERRIDES $MAIN $contextName $port
+cd "${processDir}"
+
+# Start application using `spark-submit` which takes cake of computing classpaths
+"${SPARK_HOME}/bin/spark-submit" \
+  --class $MAIN \
+  --driver-memory $xmxMemory \
+  --conf "spark.executor.extraJavaOptions=${LOGGING_OPTS}" \
+  --driver-java-options "${GC_OPTS} ${JAVA_OPTS} ${LOGGING_OPTS} ${CONFIG_OVERRIDES}" \
+  --jars "${JARS}" $parentdir/spark-job-rest.jar \
+  $conffile >> "${LOG_DIR}/${LOG_FILE}" 2>&1 &
+echo $! > "${processDir}/context.pid"
