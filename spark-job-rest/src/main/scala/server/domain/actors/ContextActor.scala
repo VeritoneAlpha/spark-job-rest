@@ -202,7 +202,7 @@ class ContextActor(localConfig: Config) extends Actor with Stash {
       import JobState._
       jobState match {
         case x: JobRunSuccess => sender ! Job(jobId, contextName, Finished.toString, x.result, x.startTime)
-        case e: JobRunError => sender ! Job(jobId, contextName, Failed.toString, e.errorMessage, e.startTime)
+        case e: JobRunError => sender ! Job(jobId, contextName, Error.toString, e.errorMessage, e.startTime)
         case x: JobStarted => sender ! Job(jobId, contextName, Running.toString, "", x.startTime)
         case x: JobDoesNotExist => sender ! JobDoesNotExist
       }
@@ -211,7 +211,7 @@ class ContextActor(localConfig: Config) extends Actor with Stash {
       import JobState._
       val jobsList = jobStateMap.map {
          case (id: String, x: JobRunSuccess) => Job(id, contextName, Finished.toString, x.result, x.startTime)
-         case (id: String, e: JobRunError) => Job(id, contextName, Failed.toString, e.errorMessage, e.startTime)
+         case (id: String, e: JobRunError) => Job(id, contextName, Error.toString, e.errorMessage, e.startTime)
          case (id: String, x: JobStarted) => Job(id, contextName, Running.toString, "", x.startTime)
        }.toList
       sender ! jobsList
