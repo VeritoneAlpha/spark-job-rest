@@ -2,8 +2,7 @@ package server.domain.actors
 
 import akka.actor.{Actor, ActorRef, Props, Stash, Terminated}
 import api._
-import api.entities.{ContextState, JobState}
-import api.responses.Job
+import api.entities.ContextState
 import api.types.ID
 import com.google.gson.Gson
 import com.typesafe.config.{Config, ConfigValueFactory}
@@ -11,14 +10,15 @@ import context.JobContextFactory
 import org.apache.commons.lang.exception.ExceptionUtils
 import org.slf4j.LoggerFactory
 import persistence.services.ContextPersistenceService.updateContextState
+import persistence.services.JobPersistenceService._
 import persistence.slickWrapper.Driver.api._
 import server.domain.actors.ContextActor._
 import server.domain.actors.JobActor._
+import server.domain.actors.messages.IsAwake
 import utils.ActorUtils
 import utils.DatabaseUtils.dbConnection
 
 import scala.collection.JavaConverters._
-import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
@@ -28,9 +28,9 @@ import scala.util.{Failure, Success, Try}
  */
 object ContextActor {
   case class Initialize(contextName: String, contextId: ID, connectionProviderActor: ActorRef, config: Config, jarsForSpark: List[String])
-  case class Initialized()
+  case object Initialized
   case class FailedInit(message: String)
-  case class ShutDown()
+  case object ShutDown
 }
 
 /**
@@ -52,11 +52,6 @@ class ContextActor(localConfig: Config) extends Actor with Stash {
    * Config which will be used as a defaults for jobs running on this context
    */
   var defaultConfig: Config = _
-
-  /**
-   * Hash for tracking jobs which running on the context
-   */
-  var jobStateMap = new mutable.HashMap[String, JobStatus]() with mutable.SynchronizedMap[String, JobStatus]
 
   /**
    * Spark application name
@@ -93,12 +88,12 @@ class ContextActor(localConfig: Config) extends Actor with Stash {
   }
 
   /**
-   * Initial actor mode when it responds to IsAwake message and can be initialized
+   * Initial actor mode when it responds to [[IsAwake]] message and can be initialized
    * @return
    */
   override def receive: Receive = {
-    case ContextManagerActor.IsAwake =>
-      sender ! ContextManagerActor.IsAwake
+    case IsAwake =>
+      sender ! IsAwake
 
     case Initialize(name, id, remoteConnectionProvider, config, jarsForSpark) =>
       // Stash all messages to process them later
@@ -116,7 +111,7 @@ class ContextActor(localConfig: Config) extends Actor with Stash {
 
         // Initialize context
         initContext(config, jarsForSpark)
-        sender ! Initialized()
+        sender ! Initialized
 
         // Switch to initialised mode and process all messages
         become(initialized)
@@ -134,26 +129,25 @@ class ContextActor(localConfig: Config) extends Actor with Stash {
    * @return
    */
   def initialized: Receive = {
-    case ShutDown() =>
+    case ShutDown =>
       updateContextState(contextId, ContextState.Terminated, db, "Received shutdown request")
       log.info(s"Context received ShutDown message : contextName=$contextName")
       log.info(s"Shutting down SparkContext $contextName")
 
       gracefullyShutdown()
 
-    case RunJob(runningClass, _, jobConfig, uuid) =>
-      log.info(s"Received RunJob message : runningClass=$runningClass contextName=$contextName uuid=$uuid ")
-      jobStateMap += (uuid -> JobStarted())
-
-      Future {
+    case RunJob(runningClass, _, jobConfig, jobId) =>
+      log.info(s"Received RunJob message : runningClass=$runningClass contextName=$contextName uuid=$jobId ")
+      val contextManager = sender()
+      val jobExecutionFuture = Future {
         Try {
           val classLoader = Thread.currentThread.getContextClassLoader
           val runnableClass = classLoader.loadClass(runningClass)
           val sparkJob = runnableClass.newInstance.asInstanceOf[SparkJobBase]
 
           jobContext.validateJob(sparkJob) match {
-            case SparkJobValid => log.info(s"Job $uuid passed context validation.")
-            case SparkJobInvalid(message) => throw new IllegalArgumentException(s"Invalid job $uuid: $message")
+            case SparkJobValid => log.info(s"Job $jobId passed context validation.")
+            case SparkJobInvalid(message) => throw new IllegalArgumentException(s"Invalid job $jobId: $message")
           }
 
           val jobConfigValidation = sparkJob.validate(jobContext.asInstanceOf[sparkJob.C], jobConfig.withFallback(defaultConfig))
@@ -162,26 +156,33 @@ class ContextActor(localConfig: Config) extends Actor with Stash {
             case SparkJobValid => log.info("Job config validation passed.")
           }
 
-          sparkJob.runJob(jobContext.asInstanceOf[sparkJob.C], jobConfig.withFallback(defaultConfig))
+          val finalJobConfig = jobConfig.withFallback(defaultConfig)
+          persistJobStart(jobId, contextName, contextId, finalJobConfig, db)
+
+          sparkJob.runJob(jobContext.asInstanceOf[sparkJob.C], finalJobConfig)
         }
-      } andThen {
-        case Success(futureResult) => futureResult match {
+      }
+      try {
+        jobExecutionFuture map {
           case Success(result) =>
-            log.info(s"Finished running job : runningClass=$runningClass contextName=$contextName uuid=$uuid ")
-            jobStateMap += (uuid -> JobRunSuccess(gsonTransformer.toJson(result)))
+            log.info(s"Finished running job : runningClass=$runningClass contextName=$contextName uuid=$jobId ")
+            persistJobResult(jobId, gsonTransformer.toJson(result), db)
           case Failure(e: Throwable) =>
-            jobStateMap += (uuid -> JobRunError(ExceptionUtils.getStackTrace(e)))
-            log.error(s"Error running job : runningClass=$runningClass contextName=$contextName uuid=$uuid ", e)
+            log.error(s"Error running job : runningClass=$runningClass contextName=$contextName uuid=$jobId ", e)
+            persistJobFailure(jobId, "Job error: " + ExceptionUtils.getStackTrace(e), db)
           case x: Any =>
             log.error("Received ANY from running job !!! " + x)
+            persistJobFailure(jobId, "Received ANY from running job !!! " + x, db)
+        } onFailure {
+          case e: Throwable =>
+            log.error(s"Error running job : runningClass=$runningClass contextName=$contextName uuid=$jobId ", e)
+            persistJobFailure(jobId, "Job execution error: " + ExceptionUtils.getStackTrace(e), db)
         }
-
-        case Failure(e: Throwable) =>
-          jobStateMap += (uuid -> JobRunError(ExceptionUtils.getStackTrace(e)))
-          log.error(s"Error running job : runningClass=$runningClass contextName=$contextName uuid=$uuid ", e)
-
-        case x: Any =>
-          log.error("Received ANY from running job !!! " + x)
+      } catch {
+        case e: Throwable =>
+          val errorReport = ExceptionUtils.getStackTrace(e)
+          log.error(s"Error during processing job $jobId result at context $contextName : $contextId: $errorReport")
+          contextManager ! ContextManagerActor.UnrecoverableContextError(e, contextName, contextId)
       }
 
     case Terminated(actor) =>
@@ -192,27 +193,8 @@ class ContextActor(localConfig: Config) extends Actor with Stash {
         gracefullyShutdown()
       }
 
-    case JobStatusEnquiry(_, jobId) =>
-      val jobState = jobStateMap.getOrElse(jobId, JobDoesNotExist())
-      import JobState._
-      jobState match {
-        case x: JobRunSuccess => sender ! Job(jobId, contextName, Finished.toString, x.result, x.startTime)
-        case e: JobRunError => sender ! Job(jobId, contextName, Error.toString, e.errorMessage, e.startTime)
-        case x: JobStarted => sender ! Job(jobId, contextName, Running.toString, "", x.startTime)
-        case x: JobDoesNotExist => sender ! JobDoesNotExist
-      }
-
-    case GetAllJobsStatus() =>
-      import JobState._
-      val jobsList = jobStateMap.map {
-         case (id: String, x: JobRunSuccess) => Job(id, contextName, Finished.toString, x.result, x.startTime)
-         case (id: String, e: JobRunError) => Job(id, contextName, Error.toString, e.errorMessage, e.startTime)
-         case (id: String, x: JobStarted) => Job(id, contextName, Running.toString, "", x.startTime)
-       }.toList
-      sender ! jobsList
-
     case x @ _ =>
-      log.info(s"Received UNKNOWN message type $x")
+      log.info(s"Received UNKNOWN message: $x")
   }
 
   /**

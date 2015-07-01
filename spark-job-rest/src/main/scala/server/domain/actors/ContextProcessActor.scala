@@ -8,7 +8,7 @@ import scala.concurrent.duration._
 import scala.sys.process.{Process, ProcessBuilder, ProcessLogger}
 
 object ContextProcessActor {
-  case class Terminate()
+  case object Terminate
 }
 
 class ContextProcessActor(processBuilder: ProcessBuilder, contextName: String) extends Actor {

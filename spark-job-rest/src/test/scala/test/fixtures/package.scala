@@ -1,6 +1,6 @@
 package test
 
-import api.entities.{Jars, JobDetails, ContextState, ContextDetails}
+import api.entities.{ContextDetails, ContextState, Jars, JobDetails}
 import com.typesafe.config.ConfigFactory
 
 package object fixtures {
@@ -41,5 +41,5 @@ package object fixtures {
   /**
    * Random job entity to reduce updates when context schema updates
    */
-  def jobEntity(context: ContextDetails) = JobDetails(Some(context.id), None, None, "java.utils.UUID", diningConfig, Some(bananaConfig))
+  def jobEntity(context: ContextDetails) = JobDetails("java.util.UUID", diningConfig, Some(context.id), finalConfig = Some(bananaConfig))
 }

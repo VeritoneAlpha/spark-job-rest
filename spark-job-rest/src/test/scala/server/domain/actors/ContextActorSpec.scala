@@ -3,6 +3,7 @@ package server.domain.actors
 import akka.actor.ActorSystem
 import akka.pattern.{ask, gracefulStop}
 import akka.testkit.TestActorRef
+import api.types.nextIdentifier
 import com.typesafe.config.{Config, ConfigFactory}
 import context.{FakeContext, JobContextFactory}
 import org.apache.spark.SparkContext
@@ -10,7 +11,6 @@ import org.junit.runner.RunWith
 import org.scalatest._
 import org.scalatest.concurrent.TimeLimitedTests
 import org.scalatest.junit.JUnitRunner
-import api.types.nextIdentifier
 import server.domain.actors.ContextActor.Initialize
 import test.durations.{contextTimeout, dbTimeout, timeLimits}
 import test.fixtures
@@ -53,23 +53,20 @@ class ContextActorSpec extends WordSpec with MustMatchers with BeforeAndAfter wi
   "ContextActor" should {
     "create Spark context when initialized" in {
       val future = contextActorRef ? initMessage()
-      val Success(result: ContextActor.Initialized) = future.value.get
-      result must not equal null
+      val Success(ContextActor.Initialized) = future.value.get
       contextActor.jobContext.isInstanceOf[SparkContext] mustEqual true
     }
 
     "have default factory for Spark context" in {
       val configWithoutFactory = config.withoutPath(JobContextFactory.classNameConfigEntry)
       val future = contextActorRef ? initMessage(configWithoutFactory)
-      val Success(result: ContextActor.Initialized) = future.value.get
-      result must not equal null
+      val Success(ContextActor.Initialized) = future.value.get
       contextActor.jobContext.isInstanceOf[SparkContext] mustEqual true
     }
 
     "create context from specified factory" in {
       val future = contextActorRef ? initMessage(fakeContextFactoryConfig)
-      val Success(result: ContextActor.Initialized) = future.value.get
-      result must not equal null
+      val Success(ContextActor.Initialized) = future.value.get
       contextActor.jobContext.isInstanceOf[FakeContext] mustEqual true
     }
   }

@@ -3,12 +3,13 @@ package server
 import akka.actor.{ActorRef, ActorSystem}
 import akka.pattern.ask
 import akka.util.Timeout
-import api.entities.ContextDetails
+import api.entities.{ContextDetails, JobDetails}
 import api.json.JsonProtocol._
 import api.responses._
 import com.typesafe.config.{Config, ConfigFactory}
 import org.slf4j.LoggerFactory
 import persistence.services.ContextPersistenceService.{allContexts, contextById}
+import persistence.services.JobPersistenceService.{allJobs, insertJob, jobById}
 import server.domain.actors.ContextActor.FailedInit
 import server.domain.actors.ContextManagerActor._
 import server.domain.actors.JarActor._
@@ -107,39 +108,46 @@ class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor:
       }
     }
 
+  /**
+   * All routes related to jobs
+   */
   def jobRoute: Route = pathPrefix("jobs") {
+    /**
+     * Job list route
+     */
     pathEnd {
       get {
         corsFilter(List("*")) {
           respondWithMediaType(MediaTypes.`application/json`) { ctx =>
-            val resultFuture = jobManagerActor ? GetAllJobsStatus()
-            resultFuture.map {
-              case jobs: Jobs => ctx.complete(StatusCodes.OK, jobs)
+            allJobs(db) map {
+              case jobsDetails => ctx.complete(StatusCodes.OK, jobsDetails map (j => Job.fromJobDetails(j)))
+            } onFailure {
               case e: Throwable => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
-              case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
             }
           }
         }
       }
     } ~
+      /**
+       * Job status route
+       */
       get {
-        path(Segment) { jobId =>
-          parameters('contextName) { contextName =>
-            corsFilter(List("*")) {
-              respondWithMediaType(MediaTypes.`application/json`) { ctx =>
-                val resultFuture = jobManagerActor ? JobStatusEnquiry(contextName, jobId)
-                resultFuture.map {
-                  case job: Job => ctx.complete(StatusCodes.OK, job)
-                  case JobDoesNotExist() => ctx.complete(StatusCodes.BadRequest, ErrorResponse("JobId does not exist!"))
-                  case NoSuchContext => ctx.complete(StatusCodes.BadRequest, ErrorResponse("Context does not exist!"))
-                  case e: Throwable => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
-                  case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
-                }
+        path(JavaUUID) { jobId =>
+          corsFilter(List("*")) {
+            respondWithMediaType(MediaTypes.`application/json`) { ctx =>
+              jobById(jobId, db) map {
+                case Some(jobDetails) => ctx.complete(StatusCodes.OK, Job.fromJobDetails(jobDetails))
+                case None => ctx.complete(StatusCodes.BadRequest, ErrorResponse("JobId does not exist!"))
+              } onFailure {
+                case e: Throwable => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
               }
             }
           }
         }
       } ~
+      /**
+       * Job submit route
+       */
       post {
         parameters('runningClass, 'contextName) { (runningClass, context) =>
           entity(as[String]) { configString =>
@@ -149,12 +157,19 @@ class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor:
                   ConfigFactory.parseString(configString)
                 } match {
                   case Success(requestConfig) =>
-                    val resultFuture = jobManagerActor ? RunJob(runningClass, context, requestConfig)
-                    resultFuture.map {
-                      case job: Job => ctx.complete(StatusCodes.OK, job)
-                      case NoSuchContext => ctx.complete(StatusCodes.BadRequest, ErrorResponse("No such context."))
+                    val jobDetails = JobDetails(runningClass, requestConfig)
+                    val createJobRecordFuture = insertJob(jobDetails, db)
+                    createJobRecordFuture map {
+                      case _ =>
+                        val submitJobFuture = jobManagerActor ? RunJob(runningClass, context, requestConfig, jobDetails.id)
+                        submitJobFuture map {
+                          case JobAccepted => ctx.complete(StatusCodes.OK, Job.fromJobDetails(jobDetails))
+                          case NoSuchContext => ctx.complete(StatusCodes.BadRequest, ErrorResponse("No such context."))
+                          case e: Throwable => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
+                          case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
+                        }
+                    } onFailure {
                       case e: Throwable => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
-                      case x: Any => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(x.toString))
                     }
                   case Failure(e) => ctx.complete(StatusCodes.BadRequest, ErrorResponse("Invalid parameter: " + e.getMessage))
                 }
@@ -219,6 +234,9 @@ class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor:
       }
   }
 
+  /**
+   * All routes related to active contexts.
+   */
   def contextRoute: Route = pathPrefix("contexts") {
     post {
       path(Segment) { contextName =>
@@ -265,7 +283,7 @@ class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor:
         get {
           corsFilter(List("*")) {
             respondWithMediaType(MediaTypes.`application/json`) { ctx =>
-              val resultFuture = contextManagerActor ? GetAllContextsForClient()
+              val resultFuture = contextManagerActor ? GetAllContextsForClient
               resultFuture.map {
                 case contexts: Contexts => ctx.complete(StatusCodes.OK, contexts)
                 case e: Throwable => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
@@ -295,7 +313,6 @@ class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor:
         }
       }
     }
-
   }
 
   def jarRoute: Route = pathPrefix("jars") {

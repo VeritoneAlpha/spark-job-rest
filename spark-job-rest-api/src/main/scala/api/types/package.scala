@@ -12,11 +12,6 @@ package object types {
   type ID = UUID
 
   /**
-   * Type alias for optional link to foreign entity
-   */
-  type WEAK_LINK = Option[ID]
-
-  /**
    * Returns next unique identifier. We use it to simplify switching to different identifiers backend.
    * @return next ID
    */

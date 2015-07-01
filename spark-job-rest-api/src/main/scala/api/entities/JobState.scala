@@ -9,6 +9,6 @@ object JobState extends Enumeration {
   val Submitted = Value("Submitted")
   val Queued = Value("Queued")
   val Running = Value("Running")
-  val Error = Value("Error")
+  val Error = Value("Failed")
   val Finished = Value("Finished")
 }

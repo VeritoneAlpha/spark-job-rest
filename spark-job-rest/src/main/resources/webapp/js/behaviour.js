@@ -73,11 +73,11 @@ $('#el').spin('flower', 'red');
         opts = $.extend(
           { color: color || $this.css('color') },
           $.fn.spin.presets[opts] || opts
-        )
+        );
         data.spinner = new Spinner(opts).spin(this);
       }
     })
-  }
+  };
 
   $.fn.spin.presets = {
     tiny: { lines: 8, length: 2, width: 2, radius: 3 },
@@ -92,7 +92,7 @@ var errorHandler = function(msg) {
     console.log("=======ERROR=======");
     console.log(msg);
     console.log("===================");
-}
+};
 
 var sparkJobTemplate = function () {
     "use strict";
@@ -164,7 +164,7 @@ var sparkJobTemplate = function () {
             var this_ = $(this),
                 ctx = this_.data('context');
 
-            Self.deleteContext(ctx).done(function(data) {
+            Self.deleteContext(ctx).done(function() {
                 this_.closest('tr').remove();
                 Self.notifySuccess("Deleted context: " + ctx)
             });
@@ -181,7 +181,6 @@ var sparkJobTemplate = function () {
                 ctx_jar.focus();
                 return false;
             }
-
 
             generatedContext.name = ctx_name.val();
 
@@ -309,12 +308,12 @@ var sparkJobTemplate = function () {
         // start jobs tab
         navTabs.find('a[aria-controls="jobs"]').on('click', function () {
             Self.getAllJobs().done(function(data) {
-                var response = data.jobs,
+                var response = data,
                     output = '',
                     result = '';
 
                 for(var i = 0; i < response.length; i++) {
-                    if(response[i].status !== 'Running') {
+                    if(! response[i].status in ['Submitted', 'Queued', 'Running']) {
                         result =
                             '<a class="details">' +
                             '<span aria-hidden="true" class="glyphicon glyphicon-modal-window"></span>' +
@@ -327,6 +326,8 @@ var sparkJobTemplate = function () {
                                 '<td>' + response[i].jobId + '</td>' +
                                 '<td>' + response[i].contextName + '</td>' +
                                 '<td>' + response[i].status + '</td>' +
+                                '<td>' + response[i].startTime || "" + '</td>' +
+                                '<td>' + response[i].duration || "" + '</td>' +
                                 '<td>' + result +'</td>' +
                             '</tr>';
                 }
@@ -365,12 +366,11 @@ var sparkJobTemplate = function () {
 
             Self.runJob()
                 .done(function(data) {
-
                     var response = data,
                         output = '',
                         result = '';
 
-                    if(response.status !== 'Running') {
+                    if(! response.status in ['Submitted', 'Queued', 'Running']) {
                         result = '<a class="details" data-result="'+ response.result +'"><span aria-hidden="true" class="glyphicon glyphicon-modal-window"></span></a>';
                     } else {
                         result = '';
@@ -379,6 +379,8 @@ var sparkJobTemplate = function () {
                                 '<td>'+ response.jobId  +'</td>' +
                                 '<td>'+ response.contextName +'</td>' +
                                 '<td>'+ response.status +'</td>' +
+                                '<td>' + response[i].startTime || "" + '</td>' +
+                                '<td>' + response[i].duration || "" + '</td>' +
                                 '<td>'+ result +'</td>' +
                             '</tr>';
 
@@ -388,7 +390,7 @@ var sparkJobTemplate = function () {
                 .fail(function(data) {
                     Self.notify(data.responseJSON.error);
                 })
-                .always(function(data) {
+                .always(function() {
                     Self.enableScreen();
                     runJobModal.modal('hide');
                 });
@@ -698,7 +700,7 @@ var sparkJobTemplate = function () {
             if(jobsLk.closest('.active').length) {
                 jobsLk.click();
             }
-        }
+        };
         var t = setInterval(checkJobsTab,3000);
     };
 };

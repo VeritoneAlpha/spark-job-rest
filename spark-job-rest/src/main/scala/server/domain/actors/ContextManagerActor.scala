@@ -16,6 +16,7 @@ import persistence.services.ContextPersistenceService.{insertContext, setContext
 import persistence.slickWrapper.Driver.api._
 import server.domain.actors.ContextManagerActor._
 import server.domain.actors.JarActor.{GetJarsPathForAll, ResultJarsPathForAll}
+import server.domain.actors.messages.IsAwake
 import utils.ActorUtils
 import utils.DatabaseUtils._
 
@@ -35,13 +36,13 @@ object ContextManagerActor {
   case class ContextProcessTerminated(contextName: String, statusCode: Int)
   case class GetContext(contextName: String)
   case class GetContextInfo(contextName: String)
-  case class GetAllContextsForClient()
-  case class GetAllContexts()
-  case class NoSuchContext()
-  case class ContextAlreadyExists()
+  case object GetAllContextsForClient
+  case object GetAllContexts
+  case object NoSuchContext
+  case object ContextAlreadyExists
   case class DestroyProcess(process: Process)
-  case class IsAwake()
   case class ContextInfo(contextName: String, contextId: ID, sparkUiPort: String, @transient referenceActor: ActorSelection)
+  case class UnrecoverableContextError(error: Throwable, contextName: String, contextId: ID)
 }
 
 /**
@@ -114,7 +115,7 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef, connectionP
               case Success(_) =>
                 // Initialize context
                 sendInitMessage(contextName, contextDetails.id, port, actorRef, webSender, mergedConfig, pathForSpark)
-              // Catch persistance error
+              // Catch persistence error
               case Failure(e: Throwable) =>
                 log.error(s"Failed! ${ExceptionUtils.getStackTrace(e)}")
                 webSender ! e
@@ -136,11 +137,11 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef, connectionP
           contextInfo <- contextMap remove contextName;
           processRef <- processMap remove contextName
         ) {
-          contextInfo.referenceActor ! ContextActor.ShutDown()
+          contextInfo.referenceActor ! ContextActor.ShutDown
           sender ! Success
 
           // Terminate process
-          processRef ! ContextProcessActor.Terminate()
+          processRef ! ContextProcessActor.Terminate
         }
       } else {
         sender ! NoSuchContext
@@ -173,15 +174,18 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef, connectionP
         sender ! NoSuchContext
       }
 
-    case GetAllContextsForClient() =>
+    case GetAllContextsForClient =>
       log.info(s"Received GetAllContexts message.")
       sender ! Contexts(contextMap.values.map {
         case ContextInfo(contextName, contextId, sparkUiPort, _) => Context(contextName, contextId, Running, sparkUiPort)
       }.toArray)
 
-    case GetAllContexts() =>
+    case GetAllContexts =>
       sender ! contextMap.values.map(_.referenceActor)
       log.info(s"Received GetAllContexts message.")
+
+    case UnrecoverableContextError(error, contextName, contextId) =>
+      log.error(s"Unrecoverable error on context $contextName : $contextId: $error")
   }
 
   def sendInitMessage(contextName: String, contextId: ID, port: Int, actorRef: ActorSelection, sender: ActorRef, config: Config, jarsForSpark: List[String]): Unit = {
@@ -199,21 +203,21 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef, connectionP
           log.info(s"Remote context actor is awaken: $isAwake")
           val initializationFuture = actorRef ? ContextActor.Initialize(contextName, contextId, connectionProviderActor, config, jarsForSpark)
           initializationFuture map {
-            case success: ContextActor.Initialized =>
-              log.info(s"Context '$contextName' initialized: $success")
+            case ContextActor.Initialized =>
+              log.info(s"Context '$contextName' initialized")
               contextMap += contextName -> ContextInfo(contextName, contextId, sparkUiPort, actorRef)
               setContextSparkUiPort(contextId, sparkUiPort, db)
               sender ! Context(contextName, contextId, Running, sparkUiPort)
             case error @ ContextActor.FailedInit(reason) =>
               log.error(s"Init failed for context $contextName", reason)
               sender ! error
-              processMap.remove(contextName).get ! ContextProcessActor.Terminate()
+              processMap.remove(contextName).get ! ContextProcessActor.Terminate
           } onFailure {
             case e: Exception =>
               updateContextState(contextId, ContextState.Failed, db, "Failed to send init message")
               log.error("FAILED to send init message!", e)
               sender ! ContextActor.FailedInit(ExceptionUtils.getStackTrace(e))
-              processMap.remove(contextName).get ! ContextProcessActor.Terminate()
+              processMap.remove(contextName).get ! ContextProcessActor.Terminate
           }
       } onFailure {
         case e: Exception =>

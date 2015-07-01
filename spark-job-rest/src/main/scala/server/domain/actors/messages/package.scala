@@ -52,4 +52,9 @@ package object messages {
    * @param db database connection
    */
   case class DatabaseConnection(@transient db: Database)
+
+  /**
+   * This message used for basic heartbeat negotiation and may be used both as request and response
+   */
+  case object IsAwake
 }
