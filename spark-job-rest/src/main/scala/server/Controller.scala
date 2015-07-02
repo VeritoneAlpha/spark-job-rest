@@ -32,9 +32,7 @@ class Controller(val config: Config,
                  jobManagerActor: ActorRef,
                  jarActor: ActorRef,
                  connectionProviderActor: ActorRef,
-                 originalSystem: ActorSystem)
-  extends SimpleRoutingApp
-  with CORSDirectives {
+                 originalSystem: ActorSystem) extends SimpleRoutingApp with CORSDirectives {
 
   implicit val system = originalSystem
   implicit val timeout: Timeout = 60.seconds

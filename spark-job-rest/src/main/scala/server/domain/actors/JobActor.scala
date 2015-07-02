@@ -6,8 +6,11 @@ import api.types.ID
 import com.typesafe.config.Config
 import org.joda.time.{DateTime, DateTimeZone}
 import org.slf4j.LoggerFactory
+import persistence.services.JobPersistenceService.persistJobFailure
+import persistence.slickWrapper.Driver.api.Database
 import server.domain.actors.ContextManagerActor.{GetContext, NoSuchContext}
 import server.domain.actors.JobActor._
+import utils.DatabaseUtils._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -31,9 +34,18 @@ object JobActor {
  * @param config job config
  * @param contextManagerActor context manager
  */
-class JobActor(val config: Config, contextManagerActor: ActorRef) extends Actor {
+class JobActor(val config: Config, contextManagerActor: ActorRef, connectionProviderActor: ActorRef) extends Actor {
 
   val log = LoggerFactory.getLogger(getClass)
+
+  /**
+   * Database connection received from connection provider [[server.domain.actors.DatabaseServerActor]]
+   */
+  var db: Database = _
+
+  override def preStart() = {
+    db = dbConnection(connectionProviderActor)
+  }
 
   override def receive: Receive = {
     case job@RunJob(runningClass, contextName, _, jobId) =>
@@ -48,13 +60,16 @@ class JobActor(val config: Config, contextManagerActor: ActorRef) extends Actor 
           contextRef ! job
           // Report to client
           fromWebApi ! JobAccepted
-        case NoSuchContext => fromWebApi ! NoSuchContext
+        case NoSuchContext =>
+          persistJobFailure(jobId, s"No such context $contextName", db)
+          fromWebApi ! NoSuchContext
         case e@_ => log.warn(s"Received UNKNOWN TYPE when asked for context. Type received $e")
       }
 
       getContextFuture onFailure {
         case e =>
           fromWebApi ! e
+          persistJobFailure(jobId, s"Unrecoverable error during submit: ${e.getStackTrace}", db)
           log.error(s"An error has occurred.", e)
       }
   }

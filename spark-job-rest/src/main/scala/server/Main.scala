@@ -33,7 +33,7 @@ object Main extends AskTimeout {
 
     val jarActor = createActor(Props(new JarActor(config)), "JarActor", system, supervisor)
     val contextManagerActor = createActor(Props(new ContextManagerActor(config, jarActor, databaseServerActor)), "ContextManager", system, supervisor)
-    val jobManagerActor = createActor(Props(new JobActor(config, contextManagerActor)), "JobManager", system, supervisor)
+    val jobManagerActor = createActor(Props(new JobActor(config, contextManagerActor, databaseServerActor)), "JobManager", system, supervisor)
 
     // HTTP server will start immediately after controller instantiation
     new Controller(config, contextManagerActor, jobManagerActor, jarActor, databaseServerActor, system)
