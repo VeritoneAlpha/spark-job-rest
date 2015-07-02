@@ -1,20 +1,29 @@
 package persistence.schema
 
-import com.typesafe.config.{Config, ConfigFactory}
-import persistence.slickWrapper.Driver.api._
-import api.entities.{ContextState, JobState, Jars}
+import api.configRenderingOptions
 import api.entities.ContextState._
 import api.entities.JobState._
-import api.configRenderingOptions
+import api.entities.{ContextState, Jars, JobState}
+import com.typesafe.config.{Config, ConfigFactory, ConfigValueFactory}
+import org.slf4j.LoggerFactory
+import persistence.slickWrapper.Driver.api._
+
+import scala.util.{Failure, Success, Try}
 
 object ColumnTypeImplicits {
+  private val log = LoggerFactory.getLogger(getClass)
+
   /**
    * Custom column type conversion from [[com.typesafe.config.Config]] to [[String]]
    */
   implicit val configColumnType = MappedColumnType.base[Config, String](
   { config: Config => config.root().render(configRenderingOptions) },
-  { configString: String =>
-    ConfigFactory.parseString(configString)
+  { configString: String => Try { ConfigFactory.parseString(configString) } match {
+    case Success(config) => config
+    case Failure(e: Throwable) =>
+      log.error("Failed to parse config from string.", e)
+      ConfigFactory.empty().withValue("error", ConfigValueFactory.fromAnyRef(e.getStackTrace))
+  }
   }
   )
 
