@@ -11,7 +11,7 @@ object ContextUtils {
       .setAppName(contextName)
       .setJars(config.getStringList("spark.job.rest.context.jars").asScala)
 
-    for(x <- config.entrySet().asScala if x.getKey.startsWith("spark.")) {
+    for(x <- config.entrySet().asScala if x.getKey.startsWith("spark.") && ! x.getKey.startsWith("spark.job.rest.")) {
       sparkConf.set(x.getKey, x.getValue.unwrapped().toString)
     }
 
