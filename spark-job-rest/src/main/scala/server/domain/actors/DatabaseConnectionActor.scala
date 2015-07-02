@@ -2,6 +2,7 @@ package server.domain.actors
 
 import akka.actor.{Actor, ActorRef}
 import akka.pattern.ask
+import com.typesafe.config.Config
 import org.slf4j.LoggerFactory
 import persistence.slickWrapper.Driver.api._
 import server.domain.actors.messages._
@@ -16,9 +17,9 @@ import scala.concurrent.ExecutionContext.Implicits.global
  * Which means that both [[DatabaseServerActor]] and [[DatabaseServerActor]] can be a connection provider.
  *
  * @param connectionProviderActor reference to actor which has database connection
+ * @param config application level config
  */
-class DatabaseConnectionActor(connectionProviderActor: ActorRef) extends Actor {
-  implicit val timeout = durations.defaultAskTimeout
+class DatabaseConnectionActor(connectionProviderActor: ActorRef, val config: Config) extends Actor {
 
   val log = LoggerFactory.getLogger(getClass)
 

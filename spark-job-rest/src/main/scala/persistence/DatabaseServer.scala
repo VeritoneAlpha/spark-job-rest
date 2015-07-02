@@ -1,21 +1,21 @@
 package persistence
 
 import java.io.File
-import java.util.concurrent.TimeUnit
 
-import akka.util.Timeout
 import com.typesafe.config.Config
+import config.durations
 import org.h2.tools.Server
 import org.slf4j.LoggerFactory
 import persistence.slickWrapper.Driver.api._
 import server.domain.actors.messages.DatabaseInfo
 import utils.ActorUtils.findAvailablePort
 
+
 object DatabaseServer {
-  val portConfigEntry = "appConf.database.port"
-  val hostConfigEntry = "appConf.database.host"
-  val nameConfigEntry = "appConf.database.name"
-  val baseDirConfigEntry = "appConf.database.baseDir"
+  val portConfigEntry = "spark.job.rest.database.port"
+  val hostConfigEntry = "spark.job.rest.database.host"
+  val nameConfigEntry = "spark.job.rest.database.name"
+  val baseDirConfigEntry = "spark.job.rest.database.baseDir"
 }
 
 /**
@@ -25,7 +25,7 @@ object DatabaseServer {
 class DatabaseServer(config: Config) {
   import DatabaseServer._
 
-  implicit val timeout = Timeout(10, TimeUnit.SECONDS)
+  implicit val timeout = durations.db.initializationTimeout
 
   private val log = LoggerFactory.getLogger(getClass)
 
@@ -64,9 +64,14 @@ class DatabaseServer(config: Config) {
   val port = server.getPort
 
   /**
+   * Additional connection parameters
+   */
+  val connectionParameters = "AUTO_RECONNECT=TRUE"
+
+  /**
    * JDBC connection string. All clients should use this to connect to database.
    */
-  val connectionString = s"jdbc:h2:tcp://$host:$port/./$dbName"
+  val connectionString = s"jdbc:h2:tcp://$host:$port/./$dbName;$connectionParameters"
 
   /**
    * Database connection

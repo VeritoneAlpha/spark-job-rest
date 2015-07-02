@@ -43,5 +43,5 @@ trait SQLContextFactory extends JobContextFactory {
 }
 
 object SQLContextFactory {
-  val sparkContextFactoryClassNameConfigEntry = "context.spark-context-factory"
+  val sparkContextFactoryClassNameConfigEntry = "spark.job.rest.context.spark-context-factory"
 }

@@ -34,7 +34,7 @@ class DatabaseConnectionActorSpec extends WordSpec with MustMatchers with Before
 
   before {
     databaseServerActorRef = TestActorRef(new DatabaseServerActor(config))
-    databaseConnectionActorRef = TestActorRef(new DatabaseConnectionActor(databaseServerActorRef))
+    databaseConnectionActorRef = TestActorRef(new DatabaseConnectionActor(databaseServerActorRef, config))
   }
 
   after {

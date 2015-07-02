@@ -23,7 +23,7 @@ class Jobs(tag: Tag) extends Table[JobDetails] (tag, jobsTable) {
   def status = column[JobState]("STATUS")
   def details = column[String]("VARCHAR(4096)")
   def submitTime = column[Long]("SUBMIT_TIME")
-  def result = column[Option[String]]("RESULT", O.SqlType("CLOB"))
+  def result = column[Option[String]]("RESULT", O.SqlType(resultSqlType))
   def contextName = column[Option[String]]("CONTEXT_NAME")
 
   def * = (runningClass, submittedConfig, contextId, startTime, stopTime, finalConfig, status, details, submitTime, result, contextName, id) <> (JobDetails.tupled, JobDetails.unapply)

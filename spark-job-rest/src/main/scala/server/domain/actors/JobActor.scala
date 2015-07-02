@@ -31,7 +31,7 @@ object JobActor {
  * @param config job config
  * @param contextManagerActor context manager
  */
-class JobActor(config: Config, contextManagerActor: ActorRef) extends Actor {
+class JobActor(val config: Config, contextManagerActor: ActorRef) extends Actor {
 
   val log = LoggerFactory.getLogger(getClass)
 

@@ -1,12 +1,12 @@
 package persistence
 
+import api.entities.ContextState._
 import org.junit.runner.RunWith
 import org.scalatest.concurrent.TimeLimitedTests
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.{BeforeAndAfter, MustMatchers, WordSpec}
-import api.entities.ContextState._
 import persistence.schema._
-import persistence.services.ContextPersistenceService
+import persistence.services.ContextPersistenceService._
 import persistence.slickWrapper.Driver.api._
 import test.durations.{dbTimeout, timeLimits}
 import test.fixtures
@@ -20,6 +20,8 @@ import scala.concurrent.Await
 @RunWith(classOf[JUnitRunner])
 class ContextPersistenceServiceSpec extends WordSpec with MustMatchers with BeforeAndAfter with TimeLimitedTests {
   val timeLimit = timeLimits.dbTest
+
+  val config = fixtures.applicationConfig
 
   implicit val timeout = dbTimeout
 
@@ -58,8 +60,8 @@ class ContextPersistenceServiceSpec extends WordSpec with MustMatchers with Befo
     val initialContext = fixtures.contextEntity
     Await.result(db.run(contexts += initialContext), timeout.duration)
 
-    ContextPersistenceService.updateContextState(initialContext.id, through, db)
-    ContextPersistenceService.updateContextState(initialContext.id, to, db, lastDetails)
+    updateContextState(initialContext.id, through, db)
+    updateContextState(initialContext.id, to, db, lastDetails)
 
     val finalContext = Await.result(
       db.run(contexts.filter(_.id === initialContext.id).result),

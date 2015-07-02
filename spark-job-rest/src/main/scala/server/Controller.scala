@@ -8,8 +8,8 @@ import api.json.JsonProtocol._
 import api.responses._
 import com.typesafe.config.{Config, ConfigFactory}
 import org.slf4j.LoggerFactory
-import persistence.services.ContextPersistenceService.{allContexts, contextById}
-import persistence.services.JobPersistenceService.{allJobs, insertJob, jobById}
+import persistence.services.ContextPersistenceService._
+import persistence.services.JobPersistenceService._
 import server.domain.actors.ContextActor.FailedInit
 import server.domain.actors.ContextManagerActor._
 import server.domain.actors.JarActor._
@@ -18,7 +18,7 @@ import server.domain.actors.getValueFromConfig
 import spray.http._
 import spray.httpx.SprayJsonSupport.sprayJsonMarshaller
 import spray.routing.{Route, SimpleRoutingApp}
-import utils.DatabaseUtils._
+import utils.DatabaseUtils.dbConnection
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
@@ -27,8 +27,14 @@ import scala.util.{Failure, Success, Try}
 /**
  * Spark-Job-REST HTTP service for Web UI and REST API.
  */
-class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor: ActorRef, jarActor: ActorRef, connectionProviderActor: ActorRef, originalSystem: ActorSystem)
-  extends SimpleRoutingApp with CORSDirectives {
+class Controller(val config: Config,
+                 contextManagerActor: ActorRef,
+                 jobManagerActor: ActorRef,
+                 jarActor: ActorRef,
+                 connectionProviderActor: ActorRef,
+                 originalSystem: ActorSystem)
+  extends SimpleRoutingApp
+  with CORSDirectives {
 
   implicit val system = originalSystem
   implicit val timeout: Timeout = 60.seconds
@@ -40,8 +46,8 @@ class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor:
   var ResultKey = "result"
 
   // Get ip from config, "0.0.0.0" as default
-  val webIp = getValueFromConfig(config, "appConf.web.services.ip", "0.0.0.0")
-  val webPort = getValueFromConfig(config, "appConf.web.services.port", 8097)
+  val webIp = getValueFromConfig(config, "spark.job.rest.appConf.web.services.ip", "0.0.0.0")
+  val webPort = getValueFromConfig(config, "spark.job.rest.appConf.web.services.port", 8097)
 
   val route = jobRoute ~ contextRoute ~ contextHistoryRoute ~ indexRoute ~ jarRoute
 
@@ -122,7 +128,9 @@ class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor:
             allJobs(db) map {
               case jobsDetails => ctx.complete(StatusCodes.OK, jobsDetails map (j => Job.fromJobDetails(j)))
             } onFailure {
-              case e: Throwable => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
+              case e: Throwable =>
+                ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
+                log.error("Error listing jobs", e)
             }
           }
         }
@@ -139,7 +147,9 @@ class Controller(config: Config, contextManagerActor: ActorRef, jobManagerActor:
                 case Some(jobDetails) => ctx.complete(StatusCodes.OK, Job.fromJobDetails(jobDetails))
                 case None => ctx.complete(StatusCodes.BadRequest, ErrorResponse("JobId does not exist!"))
               } onFailure {
-                case e: Throwable => ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
+                case e: Throwable =>
+                  ctx.complete(StatusCodes.InternalServerError, ErrorResponse(e.getMessage))
+                  log.error(s"Error returning jobs $jobId", e)
               }
             }
           }

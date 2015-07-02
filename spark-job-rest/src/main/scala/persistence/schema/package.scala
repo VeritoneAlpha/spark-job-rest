@@ -6,7 +6,12 @@ package object schema {
   /**
    * This SQL type should be used as a backend for [[com.typesafe.config.Config]].
    */
-  val configSQLType = "CLOB"
+  val configSQLType = s"VARCHAR(65000)"
+
+  /**
+   * This SQL type is used for storing job results
+   */
+  val resultSqlType = configSQLType
 
   /**
    * Table tags

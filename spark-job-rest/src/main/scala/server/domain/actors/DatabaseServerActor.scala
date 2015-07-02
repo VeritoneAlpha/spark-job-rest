@@ -1,10 +1,8 @@
 package server.domain.actors
 
-import java.util.concurrent.TimeUnit
-
 import akka.actor.Actor
-import akka.util.Timeout
 import com.typesafe.config.Config
+import config.durations.AskTimeout
 import org.slf4j.LoggerFactory
 import persistence.DatabaseServer
 import server.domain.actors.messages._
@@ -14,9 +12,7 @@ import utils.schemaUtils
  * Database server actor responsible for starting database and providing connection info.
  * @param config database server config
  */
-class DatabaseServerActor(config: Config) extends Actor {
-  implicit val timeout = Timeout(5, TimeUnit.SECONDS)
-
+class DatabaseServerActor(val config: Config) extends Actor with AskTimeout {
   val log = LoggerFactory.getLogger(getClass)
 
   log.info(s"Creating database server instance.")

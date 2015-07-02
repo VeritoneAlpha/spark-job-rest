@@ -4,12 +4,12 @@ import api.entities.JobDetails
 import api.entities.JobState._
 import api.types._
 import com.typesafe.config.Config
+import config.durations
 import org.joda.time.{DateTime, DateTimeZone}
 import org.slf4j.LoggerFactory
 import persistence.schema.ColumnTypeImplicits._
 import persistence.schema._
 import persistence.slickWrapper.Driver.api._
-import server.domain.actors.durations._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Await, Future}
@@ -18,7 +18,9 @@ import scala.concurrent.{Await, Future}
  * Collection of methods for persisting job entities
  */
 object JobPersistenceService {
-  val log = LoggerFactory.getLogger(getClass)
+  private val log = LoggerFactory.getLogger(getClass)
+
+  private val dbTimeout = durations.db.timeout
 
   /**
    * Inserts new job to database
@@ -43,7 +45,7 @@ object JobPersistenceService {
     log.info(s"Updating job $id state to $newStatus with details: $newDetails")
     val affectedJob = for { j <- jobs if j.id === id && j.status =!= Error && j.status =!= Finished } yield j
     val jobUpdate = affectedJob map (x => (x.status, x.details)) update (newStatus, newDetails)
-    Await.ready(db.run(jobUpdate), defaultDbTimeout)
+    Await.ready(db.run(jobUpdate), dbTimeout.duration)
   }
 
   /**
@@ -59,7 +61,7 @@ object JobPersistenceService {
     val affectedJob = for { j <- jobs if j.id === jobId} yield j
     val newValues = (Some(contextName), Some(contextId), Some(finalConfig), Some(new DateTime(DateTimeZone.UTC).getMillis), Running)
     val jobUpdate = affectedJob map (j => (j.contextName, j.contextId, j.finalConfig, j.startTime, j.status)) update newValues
-    Await.result(db.run(jobUpdate), defaultDbTimeout)
+    Await.result(db.run(jobUpdate), dbTimeout.duration)
   }
 
   /**
@@ -73,21 +75,21 @@ object JobPersistenceService {
     val affectedJob = for { j <- jobs if j.id === id && j.status =!= Finished && j.status =!= Error} yield j
     val newValues = (Some(result), Finished, Some(new DateTime(DateTimeZone.UTC).getMillis))
     val jobUpdate = affectedJob map (j => (j.result, j.status, j.stopTime)) update newValues
-    Await.ready(db.run(jobUpdate), defaultDbTimeout)
+    Await.ready(db.run(jobUpdate), dbTimeout.duration)
   }
 
   /**
    * Synchronously persists to database that job was failed
    * @param id job ID
-   * @param details failure details
+   * @param reason failure reason
    * @param db database connection
    */
-  def persistJobFailure(id: ID, details: String, db: Database): Unit = {
+  def persistJobFailure(id: ID, reason: String, db: Database): Unit = {
     log.info(s"Persisting job $id failure.")
     val affectedJob = for { j <- jobs if j.id === id} yield j
-    val newValues = (details, Error, Some(new DateTime(DateTimeZone.UTC).getMillis))
-    val jobUpdate = affectedJob map (j => (j.details, j.status, j.stopTime)) update newValues
-    Await.ready(db.run(jobUpdate), defaultDbTimeout)
+    val newValues = (Some(reason), Error, Some(new DateTime(DateTimeZone.UTC).getMillis))
+    val jobUpdate = affectedJob map (j => (j.result, j.status, j.stopTime)) update newValues
+    Await.ready(db.run(jobUpdate), dbTimeout.duration)
   }
 
   /**

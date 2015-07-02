@@ -10,19 +10,19 @@ import api.entities.{ContextDetails, ContextState, Jars}
 import api.responses.{Context, Contexts}
 import api.types._
 import com.typesafe.config.{Config, ConfigFactory}
+import config.durations
 import org.apache.commons.lang.exception.ExceptionUtils
 import org.slf4j.LoggerFactory
-import persistence.services.ContextPersistenceService.{insertContext, setContextSparkUiPort, updateContextState}
+import persistence.services.ContextPersistenceService._
 import persistence.slickWrapper.Driver.api._
 import server.domain.actors.ContextManagerActor._
 import server.domain.actors.JarActor.{GetJarsPathForAll, ResultJarsPathForAll}
 import server.domain.actors.messages.IsAwake
 import utils.ActorUtils
-import utils.DatabaseUtils._
+import utils.DatabaseUtils.dbConnection
 
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration._
 import scala.sys.process.{Process, ProcessBuilder}
 import scala.util.{Failure, Success}
 
@@ -54,8 +54,13 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef, connectionP
 
   val log = LoggerFactory.getLogger(getClass)
 
-  var lastUsedPort = getValueFromConfig(defaultConfig, "appConf.actor.systems.first.port", 11000)
-  var lastUsedPortSparkUi = getValueFromConfig(defaultConfig, "appConf.spark.ui.first.port", 16000)
+  /**
+   * Set config for configurable traits
+   */
+  val config = defaultConfig
+
+  var lastUsedPort = getValueFromConfig(defaultConfig, "spark.job.rest.appConf.actor.systems.first.port", 11000)
+  var lastUsedPortSparkUi = getValueFromConfig(defaultConfig, "spark.job.rest.appConf.spark.ui.first.port", 16000)
 
   val contextMap = new mutable.HashMap[String, ContextInfo]() with mutable.SynchronizedMap[String, ContextInfo]
   val processMap = new mutable.HashMap[String, ActorRef]() with mutable.SynchronizedMap[String, ActorRef]
@@ -72,21 +77,21 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef, connectionP
   }
 
   override def receive: Receive = {
-    case CreateContext(contextName, jars, config) =>
+    case CreateContext(contextName, jars, contextConfig) =>
       if (contextMap contains contextName) {
         sender ! ContextAlreadyExists
       } else if (jars.isEmpty) {
         sender ! ContextActor.FailedInit("jars property is not defined or is empty.")
       } else {
         // Adding the default configs
-        var mergedConfig = config.withFallback(defaultConfig)
+        var mergedConfig = contextConfig.withFallback(defaultConfig)
 
         // The port for the actor system
         val port = ActorUtils.findAvailablePort(lastUsedPort + 1)
         lastUsedPort = port
 
         // If not defined, setting the spark.ui port
-        if (!config.hasPath(sparkUIConfigPath)) {
+        if (!contextConfig.hasPath(sparkUIConfigPath)) {
           mergedConfig = addSparkUiPortToConfig(mergedConfig)
         }
 
@@ -108,7 +113,7 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef, connectionP
             val actorRef = context.actorSelection(ActorUtils.getContextActorAddress(contextName, host, port))
 
             // Persist context state and obtain context ID
-            val contextDetails = ContextDetails(contextName, config, Some(mergedConfig), Jars.fromString(jars))
+            val contextDetails = ContextDetails(contextName, contextConfig, Some(mergedConfig), Jars.fromString(jars))
 
             insertContext(contextDetails, db) onComplete {
               // Initialize context if successfully inserted to database
@@ -190,13 +195,13 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef, connectionP
 
   def sendInitMessage(contextName: String, contextId: ID, port: Int, actorRef: ActorSelection, sender: ActorRef, config: Config, jarsForSpark: List[String]): Unit = {
 
-    val sleepTime = getValueFromConfig(config, "appConf.init.sleep", 3000)
-    val tries = config.getInt("appConf.init.tries")
-    val retryTimeOut = config.getLong("appConf.init.retry-timeout").millis
-    val retryInterval = config.getLong("appConf.init.retry-interval").millis
+    val sleepTime = durations.context.sleep
+    val tries = durations.context.tries
+    val retryTimeOut = durations.context.timeout.duration
+    val retryInterval = durations.context.interval
     val sparkUiPort = config.getString(sparkUIConfigPath)
 
-    context.system.scheduler.scheduleOnce(sleepTime.millis) {
+    context.system.scheduler.scheduleOnce(sleepTime) {
       val isAwakeFuture = context.actorOf(ReTry.props(tries, retryTimeOut, retryInterval, actorRef)) ? IsAwake
       isAwakeFuture map {
         case isAwake =>
@@ -241,7 +246,7 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef, connectionP
     val xmxMemory = getValueFromConfig(config, "driver.xmxMemory", "1g")
 
     // Create context process directory
-    val processDirName = new java.io.File(defaultConfig.getString("context.contexts-base-dir")).toString + s"/$contextName"
+    val processDirName = new java.io.File(defaultConfig.getString("spark.job.rest.context.contexts-base-dir")).toString + s"/$contextName"
 
     Process(scriptPath, Seq(jarsForClasspath, contextName, port.toString, xmxMemory, processDirName))
   }

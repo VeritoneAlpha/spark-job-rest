@@ -3,11 +3,11 @@ package persistence.services
 import api.entities.ContextDetails
 import api.entities.ContextState._
 import api.types._
+import config.durations
 import org.slf4j.LoggerFactory
 import persistence.schema.ColumnTypeImplicits._
 import persistence.schema._
 import persistence.slickWrapper.Driver.api._
-import server.domain.actors.durations._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Await, Future}
@@ -16,7 +16,9 @@ import scala.concurrent.{Await, Future}
  * Collection of methods for persisting context entities
  */
 object ContextPersistenceService {
-  val log = LoggerFactory.getLogger(getClass)
+  private val log = LoggerFactory.getLogger(getClass)
+
+  private val dbTimeout = durations.db.timeout
 
   /**
    * Inserts new context to database
@@ -41,7 +43,7 @@ object ContextPersistenceService {
     log.info(s"Updating context $contextId state to $newState with details: $newDetails")
     val affectedContext = for { c <- contexts if c.id === contextId && c.state =!= Failed && c.state =!= Terminated } yield c
     val contextStateUpdate = affectedContext map (x => (x.state, x.details)) update (newState, newDetails)
-    Await.ready(db.run(contextStateUpdate), defaultDbTimeout)
+    Await.ready(db.run(contextStateUpdate), dbTimeout.duration)
   }
 
   /**
@@ -54,7 +56,7 @@ object ContextPersistenceService {
     log.info(s"Updating context $contextId Spark UI port to $port.")
     val affectedContext = for { c <- contexts if c.id === contextId } yield c
     val updateQuery = affectedContext map (_.sparkUiPort) update Some(port)
-    Await.ready(db.run(updateQuery), defaultDbTimeout)
+    Await.ready(db.run(updateQuery), dbTimeout.duration)
   }
 
   def contextById(contextId: ID, db: Database): Future[Option[ContextDetails]] = {

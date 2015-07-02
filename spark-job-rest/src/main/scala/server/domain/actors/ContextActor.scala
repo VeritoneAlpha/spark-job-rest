@@ -9,7 +9,7 @@ import com.typesafe.config.{Config, ConfigValueFactory}
 import context.JobContextFactory
 import org.apache.commons.lang.exception.ExceptionUtils
 import org.slf4j.LoggerFactory
-import persistence.services.ContextPersistenceService.updateContextState
+import persistence.services.ContextPersistenceService._
 import persistence.services.JobPersistenceService._
 import persistence.slickWrapper.Driver.api._
 import server.domain.actors.ContextActor._
@@ -41,6 +41,11 @@ class ContextActor(localConfig: Config) extends Actor with Stash {
   import context.become
 
   val log = LoggerFactory.getLogger(getClass)
+
+  /**
+   * Set config for configurable traits
+   */
+  val config = localConfig
 
   /**
    * Spark job context which may be either directly [[org.apache.spark.SparkContext]]
@@ -95,7 +100,7 @@ class ContextActor(localConfig: Config) extends Actor with Stash {
     case IsAwake =>
       sender ! IsAwake
 
-    case Initialize(name, id, remoteConnectionProvider, config, jarsForSpark) =>
+    case Initialize(name, id, remoteConnectionProvider, contextConfig, jarsForSpark) =>
       // Stash all messages to process them later
       stash()
       
@@ -110,7 +115,7 @@ class ContextActor(localConfig: Config) extends Actor with Stash {
         initDbConnection(remoteConnectionProvider)
 
         // Initialize context
-        initContext(config, jarsForSpark)
+        initContext(contextConfig, jarsForSpark)
         sender ! Initialized
 
         // Switch to initialised mode and process all messages
@@ -202,7 +207,7 @@ class ContextActor(localConfig: Config) extends Actor with Stash {
    * @param remoteConnectionProvider reference to connection provider actor
    */
   def initDbConnection(remoteConnectionProvider: ActorRef): Unit = {
-    connectionProvider = context.actorOf(Props(new DatabaseConnectionActor(remoteConnectionProvider)))
+    connectionProvider = context.actorOf(Props(new DatabaseConnectionActor(remoteConnectionProvider, config)))
     db = dbConnection(connectionProvider)
     log.info(s"Obtained connection to database: $db")
   }
@@ -214,7 +219,7 @@ class ContextActor(localConfig: Config) extends Actor with Stash {
    * @throws Throwable anything that may happen during context creation
    */
   def initContext(config: Config, jarsForSpark: List[String]): Unit = {
-    defaultConfig = config.withValue("context.jars", ConfigValueFactory.fromAnyRef(jarsForSpark.asJava))
+    defaultConfig = config.withValue("spark.job.rest.context.jars", ConfigValueFactory.fromAnyRef(jarsForSpark.asJava))
     jobContext = JobContextFactory.makeContext(defaultConfig, contextName)
     updateContextState(contextId, ContextState.Running, db, s"Created job context: $jobContext")
     log.info("Successfully initialized context " + contextName)

@@ -6,9 +6,9 @@ import akka.actor.ActorRef
 import akka.pattern.ask
 import akka.util.Timeout
 import com.typesafe.config.{Config, ConfigFactory}
+import config.durations
 import org.slf4j.LoggerFactory
 import server.domain.actors._
-import server.domain.actors.durations.defaultAskTimeout
 import server.domain.actors.messages.{Initialized, IsInitialized}
 
 import scala.annotation.tailrec
@@ -19,11 +19,14 @@ import scala.util.{Success, Try}
 object ActorUtils {
   private val log = LoggerFactory.getLogger(getClass)
 
+  private val askTimeout = durations.init.timeout
+  private val reTries = durations.init.tries
+
   val PREFIX_CONTEXT_ACTOR = "A-"
   val PREFIX_CONTEXT_SYSTEM = "S-"
 
-  val HOST_PROPERTY_NAME = "manager.akka.remote.netty.tcp.hostname"
-  val PORT_PROPERTY_NAME = "manager.akka.remote.netty.tcp.port"
+  val HOST_PROPERTY_NAME = "spark.job.rest.manager.akka.remote.netty.tcp.hostname"
+  val PORT_PROPERTY_NAME = "spark.job.rest.manager.akka.remote.netty.tcp.port"
 
   def getContextActorAddress(contextName: String, host: String, port: Int): String ={
     getActorAddress(PREFIX_CONTEXT_SYSTEM + contextName, host, port, PREFIX_CONTEXT_ACTOR + contextName)
@@ -81,7 +84,7 @@ object ActorUtils {
    * @param tries how many attempt should
    */
   @tailrec
-  def awaitActorInitialization(actor: ActorRef, timeout: Timeout = defaultAskTimeout, tries: Int = 10): Unit = tries match {
+  final def awaitActorInitialization(actor: ActorRef, timeout: Timeout = askTimeout, tries: Int = reTries): Unit = tries match {
     case 0 =>
       throw new RuntimeException(s"Refused to wait for actor $actor initialization.")
     case _ =>

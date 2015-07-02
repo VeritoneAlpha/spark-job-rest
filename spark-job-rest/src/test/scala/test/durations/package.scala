@@ -12,6 +12,6 @@ package object durations {
     import org.scalatest.time.SpanSugar._
 
     val dbTest = 1.seconds
-    val contextTest = 10.seconds
+    val contextTest = 20.seconds
   }
 }

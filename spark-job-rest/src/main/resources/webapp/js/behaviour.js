@@ -305,31 +305,51 @@ var sparkJobTemplate = function () {
         // end contexts tab
 
 
+        /**
+         * Returns true only for job which status means they have result
+         * @param {string} status job status
+         * @returns {boolean}
+         */
+        function isJobWithResult(status) {
+            return ['Submitted', 'Queued', 'Running'].indexOf(status) < 0;
+        }
+
+        /**
+         * Renders job to HTML
+         * @param {object} job
+         * @returns {string}
+         */
+        function renderJob(job) {
+            var output = '',
+                result = '';
+
+            if(isJobWithResult(job.status)) {
+                result = '<a class="details">' +
+                '<span aria-hidden="true" class="glyphicon glyphicon-modal-window"></span>' +
+                '<div style="display:none" class="data">' + job.result + '</div>' +
+                '</a>';
+            } else {
+                result = '';
+            }
+
+            output += '<tr>' +
+                '<td>' + job.jobId  +'</td>' +
+                '<td>' + job.contextName +'</td>' +
+                '<td>' + job.status +'</td>' +
+                '<td>' + (job.startTime || "") + '</td>' +
+                '<td>' + (job.duration || "") + '</td>' +
+                '<td>' + result +'</td>' +
+                '</tr>';
+            return output;
+        }
+
         // start jobs tab
         navTabs.find('a[aria-controls="jobs"]').on('click', function () {
             Self.getAllJobs().done(function(data) {
-                var response = data,
-                    output = '',
-                    result = '';
+                var output = '';
 
-                for(var i = 0; i < response.length; i++) {
-                    if(! response[i].status in ['Submitted', 'Queued', 'Running']) {
-                        result =
-                            '<a class="details">' +
-                            '<span aria-hidden="true" class="glyphicon glyphicon-modal-window"></span>' +
-                            '<div style="display:none" class="data">' + response[i].result + '</div>' +
-                            '</a>';
-                    } else {
-                        result = '';
-                    }
-                    output += '<tr>' +
-                                '<td>' + response[i].jobId + '</td>' +
-                                '<td>' + response[i].contextName + '</td>' +
-                                '<td>' + response[i].status + '</td>' +
-                                '<td>' + response[i].startTime || "" + '</td>' +
-                                '<td>' + response[i].duration || "" + '</td>' +
-                                '<td>' + result +'</td>' +
-                            '</tr>';
+                for(var i = 0; i < data.length; i++) {
+                    output += renderJob(data[i]);
                 }
 
                 jobsTable.html(output);
@@ -365,26 +385,8 @@ var sparkJobTemplate = function () {
             Self.lockScreen();
 
             Self.runJob()
-                .done(function(data) {
-                    var response = data,
-                        output = '',
-                        result = '';
-
-                    if(! response.status in ['Submitted', 'Queued', 'Running']) {
-                        result = '<a class="details" data-result="'+ response.result +'"><span aria-hidden="true" class="glyphicon glyphicon-modal-window"></span></a>';
-                    } else {
-                        result = '';
-                    }
-                    output += '<tr>' +
-                                '<td>'+ response.jobId  +'</td>' +
-                                '<td>'+ response.contextName +'</td>' +
-                                '<td>'+ response.status +'</td>' +
-                                '<td>' + response[i].startTime || "" + '</td>' +
-                                '<td>' + response[i].duration || "" + '</td>' +
-                                '<td>'+ result +'</td>' +
-                            '</tr>';
-
-                    jobsTable.prepend(output);
+                .done(function(response) {
+                    jobsTable.prepend(renderJob(response));
                     Self.notifyInfo("Started running job: " + response.jobId);
                 })
                 .fail(function(data) {
@@ -452,8 +454,6 @@ var sparkJobTemplate = function () {
         });
         // end jobs tab
 
-
-
         // start jars tab
         navTabs.find('a[aria-controls="jars"]').on('click', function () {
             Self.getAllJars().done(function(data) {
@@ -472,7 +472,6 @@ var sparkJobTemplate = function () {
                 jarsTable.html(output);
             });
         });
-
 
         jarsTable.on('click','.delete', function() {
             var this_ = $(this),
@@ -520,9 +519,6 @@ var sparkJobTemplate = function () {
             uploadJarModal.modal('hide');
         });
 
-
-
-
         uploadJarModal.find('.btn-save').on('click', function () {
             if($.trim(uploadJarInput.val())=='') {
                 uploadJarModal.find('.file-caption').focus();
@@ -544,9 +540,6 @@ var sparkJobTemplate = function () {
 
         navTabs.find('.active a').click();
         Self.refreshJobs();
-
-
-
     },
 
     Self.getAllContexts = function() {

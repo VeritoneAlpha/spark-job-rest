@@ -9,7 +9,7 @@ import context.{FakeContext, JobContextFactory}
 import org.apache.spark.SparkContext
 import org.junit.runner.RunWith
 import org.scalatest._
-import org.scalatest.concurrent.TimeLimitedTests
+import org.scalatest.concurrent.Futures
 import org.scalatest.junit.JUnitRunner
 import server.domain.actors.ContextActor.Initialize
 import test.durations.{contextTimeout, dbTimeout, timeLimits}
@@ -21,7 +21,7 @@ import scala.util.Success
  * Test suit for [[ContextActor]]
  */
 @RunWith(classOf[JUnitRunner])
-class ContextActorSpec extends WordSpec with MustMatchers with BeforeAndAfter with TimeLimitedTests {
+class ContextActorSpec extends WordSpec with MustMatchers with BeforeAndAfter with Futures {
   val timeLimit = timeLimits.contextTest
 
   val config = fixtures.applicationConfig
@@ -74,7 +74,7 @@ class ContextActorSpec extends WordSpec with MustMatchers with BeforeAndAfter wi
   val fakeContextFactoryConfig = ConfigFactory.parseString(
     """
       |{
-      |  context.job-context-factory = "context.FakeJobContextFactory",
+      |  spark.job.rest.context.job-context-factory = "context.FakeJobContextFactory",
       |}
     """.stripMargin).withFallback(config)
 }

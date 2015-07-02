@@ -14,10 +14,11 @@ import scala.concurrent.ExecutionContext.Implicits.global
  * Entry point for test application that does nothing but starts embed database server and waits for connection. 
  */
 object DatabaseServerExec {
+  val config = ConfigFactory.load("deploy").withFallback(ConfigFactory.load())
+
   def main (args: Array[String]) {
     implicit val timeout = dbTimeout
 
-    val config = ConfigFactory.load("deploy").withFallback(ConfigFactory.load())
     val system = ActorSystem("DatabaseServer", config)
 
     val databaseServerActor = system.actorOf(Props(new DatabaseServerActor(config)))

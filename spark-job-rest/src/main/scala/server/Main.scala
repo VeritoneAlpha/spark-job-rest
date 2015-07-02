@@ -2,10 +2,10 @@ package server
 
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.pattern.ask
-import com.typesafe.config.ConfigFactory
+import config.durations.AskTimeout
+import config.{default, master}
 import logging.LoggingOutputStream
 import server.domain.actors._
-import server.domain.actors.durations.databaseInitializationTimeout
 import utils.ActorUtils.awaitActorInitialization
 
 import scala.concurrent.Await
@@ -13,30 +13,30 @@ import scala.concurrent.Await
 /**
  * Spark-Job-REST entry point.
  */
-object Main {
+object Main extends AskTimeout {
+  LoggingOutputStream.redirectConsoleOutput
+
   def main(args: Array[String]) {
+    // Use default config as a base
+    val config = default
+    // Get master config
+    val masterConfig = master
 
-    LoggingOutputStream.redirectConsoleOutput
-
-    // Loads deployment configuration `deploy.conf` on top of application defaults `application.conf`
-    val defaultConfig = ConfigFactory.load("deploy").withFallback(ConfigFactory.load())
-
-    val masterConfig = defaultConfig.getConfig("manager")
     val system = ActorSystem("ManagerSystem", masterConfig)
 
     val supervisor = system.actorOf(Props(classOf[Supervisor]), "Supervisor")
 
     // Database server actor will instantiate database and ensures that schema is created
-    val databaseServerActor = createActor(Props(new DatabaseServerActor(defaultConfig)), "DatabaseServerActor", system, supervisor)
-    // We should wait for this actor to be initialized befor
-    awaitActorInitialization(databaseServerActor, databaseInitializationTimeout)
+    val databaseServerActor = createActor(Props(new DatabaseServerActor(config)), "DatabaseServerActor", system, supervisor)
+    // We should wait for this actor to be initialized before proceed
+    awaitActorInitialization(databaseServerActor)
 
-    val jarActor = createActor(Props(new JarActor(defaultConfig)), "JarActor", system, supervisor)
-    val contextManagerActor = createActor(Props(new ContextManagerActor(defaultConfig, jarActor, databaseServerActor)), "ContextManager", system, supervisor)
-    val jobManagerActor = createActor(Props(new JobActor(defaultConfig, contextManagerActor)), "JobManager", system, supervisor)
+    val jarActor = createActor(Props(new JarActor(config)), "JarActor", system, supervisor)
+    val contextManagerActor = createActor(Props(new ContextManagerActor(config, jarActor, databaseServerActor)), "ContextManager", system, supervisor)
+    val jobManagerActor = createActor(Props(new JobActor(config, contextManagerActor)), "JobManager", system, supervisor)
 
     // HTTP server will start immediately after controller instantiation
-    new Controller(defaultConfig, contextManagerActor, jobManagerActor, jarActor, databaseServerActor, system)
+    new Controller(config, contextManagerActor, jobManagerActor, jarActor, databaseServerActor, system)
   }
 
   def createActor(props: Props, name: String, customSystem: ActorSystem, supervisor: ActorRef): ActorRef = {
