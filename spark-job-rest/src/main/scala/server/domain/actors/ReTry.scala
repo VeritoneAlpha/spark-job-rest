@@ -63,11 +63,10 @@ class ReTry(val tries: Int, retryTimeOut: FiniteDuration, retryInterval: FiniteD
   def receive: Receive = {
 
     case message @ _ =>
-      context.system.scheduler.scheduleOnce(retryInterval, self, Retry(sender, message, tries))
-//      self ! Retry(sender, message, tries)
+      context.system.scheduler.scheduleOnce(retryInterval, self, Retry(sender(), message, tries))
 
       // Lets swap to a retry loop here.
-      context.become(retryLoop, false)
+      context.become(retryLoop, discardOld = false)
 
   }
 

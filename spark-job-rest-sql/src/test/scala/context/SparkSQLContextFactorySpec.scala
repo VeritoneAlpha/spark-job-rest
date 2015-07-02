@@ -41,9 +41,9 @@ class SparkSQLContextFactorySpec extends WordSpec with MustMatchers with BeforeA
 
   val config = ConfigFactory.parseString(
     """
-      |{
-      |  context.jars = [],
-      |  spark.master = "local"
+      |spark.master = "local"
+      |spark.job.rest {
+      |  context.jars = []
       |}
     """.stripMargin)
 }

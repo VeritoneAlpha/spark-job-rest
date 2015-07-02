@@ -4,7 +4,7 @@
 
 	<groupId>com.xpatterns</groupId>
 	<artifactId>spark-job-rest-sql</artifactId>
-	<version>0.3.2</version>
+	<version>0.3.3</version>
 	<packaging>jar</packaging>
 
 	<name>spark-job-rest-sql</name>
@@ -30,28 +30,29 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<scala.version>2.10.3</scala.version>
 		<scala.version.alias>2.10</scala.version.alias>
+		<spark.version>1.4.0</spark.version>
 	</properties>
 
 	<dependencies>
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-core_2.10</artifactId>
-            <version>1.3.1</version>
+            <version>${spark.version}</version>
             <scope>provided</scope>
         </dependency>
 
 		<dependency>
 			<groupId>org.apache.spark</groupId>
 			<artifactId>spark-hive_2.10</artifactId>
-			<version>1.3.1</version>
-			<scope>provided</scope>
+			<version>${spark.version}</version>
+			<!-- Spark Hive should be bundled here -->
 		</dependency>
 
 		<dependency>
 			<groupId>org.apache.spark</groupId>
 			<artifactId>spark-sql_2.10</artifactId>
-			<version>1.3.1</version>
-			<scope>provided</scope>
+			<version>${spark.version}</version>
+			<!-- Spark SQL should be bundled here -->
 		</dependency>
 
         <dependency>
@@ -141,7 +142,26 @@
 					</execution>
 				</executions>
 			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-assembly-plugin</artifactId>
+				<version>2.2.1</version>
+				<configuration>
+					<descriptors>
+						<descriptor>src/main/assembly/archive.xml</descriptor>
+					</descriptors>
+					<appendAssemblyId>false</appendAssemblyId>
+				</configuration>
+				<executions>
+					<execution>
+						<id>make-assembly</id>
+						<phase>package</phase>
+						<goals>
+							<goal>single</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
 		</plugins>
 	</build>
-
 </project>

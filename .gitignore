@@ -34,3 +34,5 @@ dependency-reduced-pom.xml
 # TODO: Implement basic fairscheduler config
 **/resources/fairscheduler.xml
 metastore_db
+/db
+spark-job-rest/db

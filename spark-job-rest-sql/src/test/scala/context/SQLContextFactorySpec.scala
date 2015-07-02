@@ -58,22 +58,22 @@ class SQLContextFactorySpec extends WordSpec with MustMatchers with BeforeAndAft
 
   val sqlContextFactoryConfig = ConfigFactory.parseString(
     """
-      |{
-      |  context.jars = [],
+      |spark.master = "local"
+      |spark.app.id = "test"
+      |spark.job.rest {
+      |  context.jars = []
       |  context.job-context-factory = "context.SparkSQLContextFactory"
-      |  spark.master = "local",
-      |  spark.app.id = "test"
       |}
     """.stripMargin).resolve()
 
   val hiveSqlFactoryWithCustomSparkContextConfig = ConfigFactory.parseString(
     """
-      |{
-      |  context.jars = [],
+      |spark.master = "local"
+      |spark.app.id = "test"
+      |spark.job.rest {
+      |  context.jars = []
       |  context.job-context-factory = "context.HiveContextFactory"
       |  context.spark-context-factory = "context.FakeJobContextFactory"
-      |  spark.master = "local",
-      |  spark.app.id = "test"
       |}
     """.stripMargin).resolve()
 }

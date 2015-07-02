@@ -13,7 +13,7 @@ trait JobContextFactory {
 object JobContextFactory {
   val logger = LoggerFactory.getLogger(getClass)
   val defaultFactoryClassName = "context.SparkContextFactory"
-  val classNameConfigEntry = "context.job-context-factory"
+  val classNameConfigEntry = "spark.job.rest.context.job-context-factory"
 
   /**
    * Loads context factory with a class name in `context.factory`

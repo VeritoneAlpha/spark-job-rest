@@ -1,22 +1,30 @@
 package server.domain.actors
 
+import java.io.File
 import java.util
 
 import akka.actor.{Actor, ActorRef, ActorSelection, Props}
 import akka.pattern.ask
+import api.entities.ContextState.Running
+import api.entities.{ContextDetails, ContextState, Jars}
+import api.responses.{Context, Contexts}
+import api.types._
 import com.typesafe.config.{Config, ConfigFactory}
+import config.durations
 import org.apache.commons.lang.exception.ExceptionUtils
 import org.slf4j.LoggerFactory
-import responses.{Context, Contexts}
+import persistence.services.ContextPersistenceService._
+import persistence.slickWrapper.Driver.api._
 import server.domain.actors.ContextManagerActor._
 import server.domain.actors.JarActor.{GetJarsPathForAll, ResultJarsPathForAll}
+import server.domain.actors.messages.IsAwake
 import utils.ActorUtils
+import utils.DatabaseUtils.dbConnection
 
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration._
 import scala.sys.process.{Process, ProcessBuilder}
-import scala.util.Success
+import scala.util.{Failure, Success}
 
 /**
  * Context management messages
@@ -28,13 +36,13 @@ object ContextManagerActor {
   case class ContextProcessTerminated(contextName: String, statusCode: Int)
   case class GetContext(contextName: String)
   case class GetContextInfo(contextName: String)
-  case class GetAllContextsForClient()
-  case class GetAllContexts()
-  case class NoSuchContext()
-  case class ContextAlreadyExists()
+  case object GetAllContextsForClient
+  case object GetAllContexts
+  case object NoSuchContext
+  case object ContextAlreadyExists
   case class DestroyProcess(process: Process)
-  case class IsAwake()
-  case class ContextInfo(contextName: String, sparkUiPort: String, @transient referenceActor: ActorSelection)
+  case class ContextInfo(contextName: String, contextId: ID, sparkUiPort: String, @transient referenceActor: ActorSelection)
+  case class UnrecoverableContextError(error: Throwable, contextName: String, contextId: ID)
 }
 
 /**
@@ -42,34 +50,48 @@ object ContextManagerActor {
  * @param defaultConfig configuration defaults
  * @param jarActor actor that responsible for jars which may be included to context classpath
  */
-class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef) extends Actor {
+class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef, connectionProviderActor: ActorRef) extends Actor {
 
   val log = LoggerFactory.getLogger(getClass)
 
-  var lastUsedPort = getValueFromConfig(defaultConfig, "appConf.actor.systems.first.port", 11000)
-  var lastUsedPortSparkUi = getValueFromConfig(defaultConfig, "appConf.spark.ui.first.port", 16000)
+  /**
+   * Set config for configurable traits
+   */
+  val config = defaultConfig
+
+  var lastUsedPort = getValueFromConfig(defaultConfig, "spark.job.rest.appConf.actor.systems.first.port", 11000)
+  var lastUsedPortSparkUi = getValueFromConfig(defaultConfig, "spark.job.rest.appConf.spark.ui.first.port", 16000)
 
   val contextMap = new mutable.HashMap[String, ContextInfo]() with mutable.SynchronizedMap[String, ContextInfo]
   val processMap = new mutable.HashMap[String, ActorRef]() with mutable.SynchronizedMap[String, ActorRef]
 
   val sparkUIConfigPath: String = "spark.ui.port"
 
+  /**
+   * Database connection received from connection provider [[server.domain.actors.DatabaseServerActor]]
+   */
+  var db: Database = _
+
+  override def preStart() = {
+    db = dbConnection(connectionProviderActor)
+  }
+
   override def receive: Receive = {
-    case CreateContext(contextName, jars, config) =>
+    case CreateContext(contextName, jars, contextConfig) =>
       if (contextMap contains contextName) {
         sender ! ContextAlreadyExists
       } else if (jars.isEmpty) {
         sender ! ContextActor.FailedInit("jars property is not defined or is empty.")
       } else {
-        //adding the default configs
-        var mergedConfig = config.withFallback(defaultConfig)
+        // Adding the default configs
+        var mergedConfig = contextConfig.withFallback(defaultConfig)
 
-        //The port for the actor system
-        val port = ActorUtils.findAvailablePort(lastUsedPort)
+        // The port for the actor system
+        val port = ActorUtils.findAvailablePort(lastUsedPort + 1)
         lastUsedPort = port
 
-        //If not defined, setting the spark.ui port
-        if (!config.hasPath(sparkUIConfigPath)) {
+        // If not defined, setting the spark.ui port
+        if (!contextConfig.hasPath(sparkUIConfigPath)) {
           mergedConfig = addSparkUiPortToConfig(mergedConfig)
         }
 
@@ -77,6 +99,7 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef) extends Act
         log.info(s"Received CreateContext message : context=$contextName jars=$jars")
 
         val jarsFuture = jarActor ? GetJarsPathForAll(jars, contextName)
+
         jarsFuture map {
           case result @ ResultJarsPathForAll(pathForClasspath, pathForSpark) =>
             log.info(s"Received jars path: $result")
@@ -88,9 +111,25 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef) extends Act
 
             val host = getValueFromConfig(defaultConfig, ActorUtils.HOST_PROPERTY_NAME, "127.0.0.1")
             val actorRef = context.actorSelection(ActorUtils.getContextActorAddress(contextName, host, port))
-            sendInitMessage(contextName, port, actorRef, webSender, mergedConfig, pathForSpark)
+
+            // Persist context state and obtain context ID
+            val contextDetails = ContextDetails(contextName, contextConfig, Some(mergedConfig), Jars.fromString(jars))
+
+            insertContext(contextDetails, db) onComplete {
+              // Initialize context if successfully inserted to database
+              case Success(_) =>
+                // Initialize context
+                sendInitMessage(contextName, contextDetails.id, port, actorRef, webSender, mergedConfig, pathForSpark)
+              // Catch persistence error
+              case Failure(e: Throwable) =>
+                log.error(s"Failed! ${ExceptionUtils.getStackTrace(e)}")
+                webSender ! e
+              case reason =>
+                log.error(s"Failed! $reason")
+                webSender ! ContextActor.FailedInit(s"Can't save context to database: $reason.")
+            }
         } onFailure {
-          case e: Exception =>
+          case e: Throwable =>
             log.error(s"Failed! ${ExceptionUtils.getStackTrace(e)}")
             webSender ! e
         }
@@ -103,11 +142,11 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef) extends Act
           contextInfo <- contextMap remove contextName;
           processRef <- processMap remove contextName
         ) {
-          contextInfo.referenceActor ! ContextActor.ShutDown()
+          contextInfo.referenceActor ! ContextActor.ShutDown
           sender ! Success
 
           // Terminate process
-          processRef ! ContextProcessActor.Terminate()
+          processRef ! ContextProcessActor.Terminate
         }
       } else {
         sender ! NoSuchContext
@@ -117,7 +156,9 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef) extends Act
       log.info(s"Received ContextProcessTerminated message : context=$contextName, statusCode=$statusCode")
       contextMap remove contextName foreach {
         case contextInfo: ContextInfo =>
-          log.error(s"Removing context $contextName due to corresponding process exit with status code $statusCode")
+          // Persist process failure
+          updateContextState(contextInfo.contextId, ContextState.Failed, db, s"Context process terminated with status code $statusCode")
+          // FIXME: this might be unnecessary since context process is already down
           contextInfo.referenceActor ! DeleteContext(contextName)
       }
 
@@ -132,51 +173,60 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef) extends Act
     case GetContextInfo(contextName) =>
       log.info(s"Received GetContext message : context=$contextName")
       if (contextMap contains contextName) {
-        sender ! Context(contextName, contextMap(contextName).sparkUiPort)
+        val ContextInfo(_, contextId, sparkUiPort, _) = contextMap(contextName)
+        sender ! Context(contextName, contextId, Running, sparkUiPort)
       } else {
         sender ! NoSuchContext
       }
 
-    case GetAllContextsForClient() =>
+    case GetAllContextsForClient =>
       log.info(s"Received GetAllContexts message.")
-      sender ! Contexts(contextMap.values.map(contextInfo => Context(contextInfo.contextName, contextInfo.sparkUiPort)).toArray)
+      sender ! Contexts(contextMap.values.map {
+        case ContextInfo(contextName, contextId, sparkUiPort, _) => Context(contextName, contextId, Running, sparkUiPort)
+      }.toArray)
 
-    case GetAllContexts() =>
+    case GetAllContexts =>
       sender ! contextMap.values.map(_.referenceActor)
       log.info(s"Received GetAllContexts message.")
+
+    case UnrecoverableContextError(error, contextName, contextId) =>
+      log.error(s"Unrecoverable error on context $contextName : $contextId: $error")
   }
 
-  def sendInitMessage(contextName: String, port: Int, actorRef: ActorSelection, sender: ActorRef, config: Config, jarsForSpark: List[String]): Unit = {
+  def sendInitMessage(contextName: String, contextId: ID, port: Int, actorRef: ActorSelection, sender: ActorRef, config: Config, jarsForSpark: List[String]): Unit = {
 
-    val sleepTime = getValueFromConfig(config, "appConf.init.sleep", 3000)
-    val tries = config.getInt("appConf.init.tries")
-    val retryTimeOut = config.getLong("appConf.init.retry-timeout") millis
-    val retryInterval = config.getLong("appConf.init.retry-interval") millis
+    val sleepTime = durations.context.sleep
+    val tries = durations.context.tries
+    val retryTimeOut = durations.context.timeout.duration
+    val retryInterval = durations.context.interval
     val sparkUiPort = config.getString(sparkUIConfigPath)
 
-    context.system.scheduler.scheduleOnce(sleepTime millis) {
+    context.system.scheduler.scheduleOnce(sleepTime) {
       val isAwakeFuture = context.actorOf(ReTry.props(tries, retryTimeOut, retryInterval, actorRef)) ? IsAwake
-      isAwakeFuture.map {
+      isAwakeFuture map {
         case isAwake =>
           log.info(s"Remote context actor is awaken: $isAwake")
-          val initializationFuture = actorRef ? ContextActor.Initialize(contextName, config, jarsForSpark)
+          val initializationFuture = actorRef ? ContextActor.Initialize(contextName, contextId, connectionProviderActor, config, jarsForSpark)
           initializationFuture map {
-            case success: ContextActor.Initialized =>
-              log.info(s"Context '$contextName' initialized: $success")
-              contextMap += contextName -> ContextInfo(contextName, sparkUiPort, actorRef)
-              sender ! Context(contextName, sparkUiPort)
+            case ContextActor.Initialized =>
+              log.info(s"Context '$contextName' initialized")
+              contextMap += contextName -> ContextInfo(contextName, contextId, sparkUiPort, actorRef)
+              setContextSparkUiPort(contextId, sparkUiPort, db)
+              sender ! Context(contextName, contextId, Running, sparkUiPort)
             case error @ ContextActor.FailedInit(reason) =>
               log.error(s"Init failed for context $contextName", reason)
               sender ! error
-              processMap.remove(contextName).get ! ContextProcessActor.Terminate()
+              processMap.remove(contextName).get ! ContextProcessActor.Terminate
           } onFailure {
             case e: Exception =>
+              updateContextState(contextId, ContextState.Failed, db, "Failed to send init message")
               log.error("FAILED to send init message!", e)
               sender ! ContextActor.FailedInit(ExceptionUtils.getStackTrace(e))
-              processMap.remove(contextName).get ! ContextProcessActor.Terminate()
+              processMap.remove(contextName).get ! ContextProcessActor.Terminate
           }
       } onFailure {
         case e: Exception =>
+          updateContextState(contextId, ContextState.Failed, db, s"Context creation timeout: $e")
           log.error("Refused to wait for remote actor, consider it as dead!", e)
           sender ! ContextActor.FailedInit(ExceptionUtils.getStackTrace(e))
       }
@@ -184,7 +234,7 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef) extends Act
   }
 
   def addSparkUiPortToConfig(config: Config): Config = {
-    lastUsedPortSparkUi = ActorUtils.findAvailablePort(lastUsedPortSparkUi)
+    lastUsedPortSparkUi = ActorUtils.findAvailablePort(lastUsedPortSparkUi + 1)
     val map = new util.HashMap[String, String]()
     map.put(sparkUIConfigPath, lastUsedPortSparkUi.toString)
     val newConf = ConfigFactory.parseMap(map)
@@ -192,11 +242,11 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef) extends Act
   }
 
   def createProcessBuilder(contextName: String, port: Int, jarsForClasspath: String, config: Config): ProcessBuilder = {
-    val scriptPath = ContextManagerActor.getClass.getClassLoader.getResource("context_start.sh").getPath
+    val scriptPath = new File(System.getenv("SPARK_JOB_REST_CONTEXT_START_SCRIPT")).getPath
     val xmxMemory = getValueFromConfig(config, "driver.xmxMemory", "1g")
 
     // Create context process directory
-    val processDirName = new java.io.File(defaultConfig.getString("context.contexts-base-dir")).toString + s"/$contextName"
+    val processDirName = new java.io.File(defaultConfig.getString("spark.job.rest.context.contexts-base-dir")).toString + s"/$contextName"
 
     Process(scriptPath, Seq(jarsForClasspath, contextName, port.toString, xmxMemory, processDirName))
   }

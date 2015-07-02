@@ -2,12 +2,13 @@ package server.domain.actors
 
 import java.io.File
 
-import akka.actor.{Actor, ActorLogging}
+import akka.actor.Actor
+import api.responses.{JarInfo, JarsInfo}
 import com.typesafe.config.Config
 import org.slf4j.LoggerFactory
-import responses.{JarsInfo, JarInfo}
 import server.domain.actors.JarActor._
 import utils.{FileUtils, JarUtils}
+
 import scala.collection.mutable.ListBuffer
 import scala.util.{Failure, Success, Try}
 
@@ -32,7 +33,7 @@ object JarActor {
 
 
   val CLASSPATH_JAR_SEPARATOR = ":"
-  val JAR_FOLDER_PROPERTY_PATH = "appConf.jars.path"
+  val JAR_FOLDER_PROPERTY_PATH = "spark.job.rest.appConf.jars.path"
 
 
 }

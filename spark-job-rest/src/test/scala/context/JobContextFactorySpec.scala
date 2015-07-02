@@ -40,10 +40,11 @@ class JobContextFactorySpec extends WordSpec with MustMatchers with BeforeAndAft
     "make context with default factory if other is not specified" in {
       val context = JobContextFactory.makeContext(ConfigFactory.parseString(
         """
-        |{
-        |  context.jars = [],
-        |  spark.master = "local",
-        |  spark.app.id = "test"
+        |spark.master = "local",
+        |spark.app.id = "test"
+        |
+        |spark.job.rest {
+        |  context.jars = []
         |}
         """.stripMargin).resolve(), "test")
       context.isInstanceOf[SparkContext] mustEqual true
@@ -53,11 +54,12 @@ class JobContextFactorySpec extends WordSpec with MustMatchers with BeforeAndAft
     "make context with specified factory if other is not specified" in {
       JobContextFactory.makeContext(ConfigFactory.parseString(
         """
-          |{
+          |spark.master = "local",
+          |spark.app.id = "test"
+          |
+          |spark.job.rest {
           |  context.jars = [],
-          |  context.job-context-factory = "context.FakeJobContextFactory",
-          |  spark.master = "local",
-          |  spark.app.id = "test"
+          |  context.job-context-factory = "context.FakeJobContextFactory"
           |}
         """.stripMargin).resolve(), "test")
         .isInstanceOf[FakeContext] mustEqual true

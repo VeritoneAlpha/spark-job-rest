@@ -73,11 +73,11 @@ $('#el').spin('flower', 'red');
         opts = $.extend(
           { color: color || $this.css('color') },
           $.fn.spin.presets[opts] || opts
-        )
+        );
         data.spinner = new Spinner(opts).spin(this);
       }
     })
-  }
+  };
 
   $.fn.spin.presets = {
     tiny: { lines: 8, length: 2, width: 2, radius: 3 },
@@ -92,7 +92,7 @@ var errorHandler = function(msg) {
     console.log("=======ERROR=======");
     console.log(msg);
     console.log("===================");
-}
+};
 
 var sparkJobTemplate = function () {
     "use strict";
@@ -164,7 +164,7 @@ var sparkJobTemplate = function () {
             var this_ = $(this),
                 ctx = this_.data('context');
 
-            Self.deleteContext(ctx).done(function(data) {
+            Self.deleteContext(ctx).done(function() {
                 this_.closest('tr').remove();
                 Self.notifySuccess("Deleted context: " + ctx)
             });
@@ -181,7 +181,6 @@ var sparkJobTemplate = function () {
                 ctx_jar.focus();
                 return false;
             }
-
 
             generatedContext.name = ctx_name.val();
 
@@ -306,29 +305,51 @@ var sparkJobTemplate = function () {
         // end contexts tab
 
 
+        /**
+         * Returns true only for job which status means they have result
+         * @param {string} status job status
+         * @returns {boolean}
+         */
+        function isJobWithResult(status) {
+            return ['Submitted', 'Queued', 'Running'].indexOf(status) < 0;
+        }
+
+        /**
+         * Renders job to HTML
+         * @param {object} job
+         * @returns {string}
+         */
+        function renderJob(job) {
+            var output = '',
+                result = '';
+
+            if(isJobWithResult(job.status)) {
+                result = '<a class="details">' +
+                '<span aria-hidden="true" class="glyphicon glyphicon-modal-window"></span>' +
+                '<div style="display:none" class="data">' + job.result + '</div>' +
+                '</a>';
+            } else {
+                result = '';
+            }
+
+            output += '<tr>' +
+                '<td>' + job.jobId  +'</td>' +
+                '<td>' + job.contextName +'</td>' +
+                '<td>' + job.status +'</td>' +
+                '<td>' + (job.startTime || "") + '</td>' +
+                '<td>' + (job.duration || "") + '</td>' +
+                '<td>' + result +'</td>' +
+                '</tr>';
+            return output;
+        }
+
         // start jobs tab
         navTabs.find('a[aria-controls="jobs"]').on('click', function () {
             Self.getAllJobs().done(function(data) {
-                var response = data.jobs,
-                    output = '',
-                    result = '';
+                var output = '';
 
-                for(var i = 0; i < response.length; i++) {
-                    if(response[i].status !== 'Running') {
-                        result =
-                            '<a class="details">' +
-                            '<span aria-hidden="true" class="glyphicon glyphicon-modal-window"></span>' +
-                            '<div style="display:none" class="data">' + response[i].result + '</div>' +
-                            '</a>';
-                    } else {
-                        result = '';
-                    }
-                    output += '<tr>' +
-                                '<td>' + response[i].jobId + '</td>' +
-                                '<td>' + response[i].contextName + '</td>' +
-                                '<td>' + response[i].status + '</td>' +
-                                '<td>' + result +'</td>' +
-                            '</tr>';
+                for(var i = 0; i < data.length; i++) {
+                    output += renderJob(data[i]);
                 }
 
                 jobsTable.html(output);
@@ -364,31 +385,14 @@ var sparkJobTemplate = function () {
             Self.lockScreen();
 
             Self.runJob()
-                .done(function(data) {
-
-                    var response = data,
-                        output = '',
-                        result = '';
-
-                    if(response.status !== 'Running') {
-                        result = '<a class="details" data-result="'+ response.result +'"><span aria-hidden="true" class="glyphicon glyphicon-modal-window"></span></a>';
-                    } else {
-                        result = '';
-                    }
-                    output += '<tr>' +
-                                '<td>'+ response.jobId  +'</td>' +
-                                '<td>'+ response.contextName +'</td>' +
-                                '<td>'+ response.status +'</td>' +
-                                '<td>'+ result +'</td>' +
-                            '</tr>';
-
-                    jobsTable.prepend(output);
+                .done(function(response) {
+                    jobsTable.prepend(renderJob(response));
                     Self.notifyInfo("Started running job: " + response.jobId);
                 })
                 .fail(function(data) {
                     Self.notify(data.responseJSON.error);
                 })
-                .always(function(data) {
+                .always(function() {
                     Self.enableScreen();
                     runJobModal.modal('hide');
                 });
@@ -450,8 +454,6 @@ var sparkJobTemplate = function () {
         });
         // end jobs tab
 
-
-
         // start jars tab
         navTabs.find('a[aria-controls="jars"]').on('click', function () {
             Self.getAllJars().done(function(data) {
@@ -470,7 +472,6 @@ var sparkJobTemplate = function () {
                 jarsTable.html(output);
             });
         });
-
 
         jarsTable.on('click','.delete', function() {
             var this_ = $(this),
@@ -518,9 +519,6 @@ var sparkJobTemplate = function () {
             uploadJarModal.modal('hide');
         });
 
-
-
-
         uploadJarModal.find('.btn-save').on('click', function () {
             if($.trim(uploadJarInput.val())=='') {
                 uploadJarModal.find('.file-caption').focus();
@@ -542,9 +540,6 @@ var sparkJobTemplate = function () {
 
         navTabs.find('.active a').click();
         Self.refreshJobs();
-
-
-
     },
 
     Self.getAllContexts = function() {
@@ -698,7 +693,7 @@ var sparkJobTemplate = function () {
             if(jobsLk.closest('.active').length) {
                 jobsLk.click();
             }
-        }
+        };
         var t = setInterval(checkJobsTab,3000);
     };
 };

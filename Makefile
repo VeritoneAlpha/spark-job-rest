@@ -28,7 +28,7 @@ REMOTE_PARAMS := SJR_DEPLOY_PATH=$(SJR_DEPLOY_PATH) \
                  SJR_IS_REMOTE_DEPLOY="true" \
                  SJR_REMOTE_DEPLOY_PATH=$(SJR_REMOTE_DEPLOY_PATH)
 
-all: build deploy
+all: remove build deploy
 
 build:
 	@mvn clean install
@@ -49,12 +49,16 @@ remote-stop:
 remote-log:
 	@$(REMOTE_PARAMS) $(CURRENT_DIR)/spark-job-rest/src/main/scripts/deploy.sh log
 
-start:
+start: stop
 	@SJR_DEPLOY_PATH=$(SJR_DEPLOY_PATH) \
     $(CURRENT_DIR)/spark-job-rest/src/main/scripts/deploy.sh start
 
 stop:
 	@SJR_DEPLOY_PATH=$(SJR_DEPLOY_PATH) \
     $(CURRENT_DIR)/spark-job-rest/src/main/scripts/deploy.sh stop
+
+remove:
+	@SJR_DEPLOY_PATH=$(SJR_DEPLOY_PATH) \
+    $(CURRENT_DIR)/spark-job-rest/src/main/scripts/deploy.sh remove
 
 .PHONY: all build deploy

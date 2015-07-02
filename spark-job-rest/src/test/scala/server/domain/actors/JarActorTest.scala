@@ -12,7 +12,7 @@ import org.junit.runner.RunWith
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.{BeforeAndAfter, FunSuite, Matchers}
-import responses.JarInfo
+import api.responses.JarInfo
 import server.domain.actors.JarActor._
 import utils.FileUtils
 
