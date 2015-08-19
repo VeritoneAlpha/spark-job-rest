@@ -4,7 +4,7 @@
 
 	<groupId>com.xpatterns</groupId>
 	<artifactId>spark-job-rest</artifactId>
-	<version>0.3.0</version>
+	<version>0.3.1-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
 	<name>spark-job-rest</name>
@@ -48,7 +48,7 @@
         <dependency>
             <groupId>com.xpatterns</groupId>
             <artifactId>spark-job-rest-api</artifactId>
-            <version>0.3.0</version>
+            <version>0.3.1-SNAPSHOT</version>
         </dependency>
 
 		<dependency>
@@ -180,7 +180,7 @@
         <dependency>
             <groupId>com.xpatterns</groupId>
             <artifactId>spark-job-rest-client</artifactId>
-            <version>0.3.0</version>
+            <version>0.3.1-SNAPSHOT</version>
         </dependency>
 	</dependencies>
 
