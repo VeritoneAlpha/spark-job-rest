@@ -1,6 +1,7 @@
 .cache
 syntax: glob
 *.log
+*.log*
 RemoteSystemsTempFiles
 *.metadata
 target/*
@@ -14,6 +15,7 @@ target/*
 *.sh~
 *.scala~
 *.md~
+*.jar
 .metadata
 target
 .DS_Store
@@ -25,3 +27,4 @@ classpath
 .iml
 .orig
 .java.orig
+dependency-reduced-pom.xml
