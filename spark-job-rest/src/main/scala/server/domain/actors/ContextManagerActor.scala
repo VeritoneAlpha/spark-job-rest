@@ -1,9 +1,11 @@
 package server.domain.actors
 
+import java.io.IOException
 import java.lang.ProcessBuilder.Redirect
+import java.net.{DatagramSocket, ServerSocket}
 import java.util
 
-import akka.actor.{Actor, ActorRef, ActorSelection}
+import akka.actor.{Terminated, Actor, ActorRef, ActorSelection}
 import akka.pattern.ask
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.commons.lang.exception.ExceptionUtils
@@ -54,6 +56,7 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef) extends Act
 
   val contextMap = new HashMap[String, ContextInfo]() with SynchronizedMap[String, ContextInfo]
   val processMap = new HashMap[String, Process]() with SynchronizedMap[String, Process]
+  val mapOfUsedJmxPorts = new HashMap[Int, String]() with SynchronizedMap[Int, String]
 
   val sparkUIConfigPath: String = "spark.ui.port"
   val sparkExtraJavaOptsPath = "spark.executor.extraJavaOptions"
@@ -86,8 +89,10 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef) extends Act
 
         //If not already defined and property jmx.port.management is set to true, adding the Executor JMX port
         var jmxProperty = ""
+        var jmxPort = 0
         if(!mergedConfig.hasPath(sparkExtraJavaOptsPath) && jmxManagementFlag){
-          val jmxPort = ActorUtils.findAvailablePort(firstJmxPortForDriver)
+          jmxPort = findAvailableJmxPort(firstJmxPortForDriver, mapOfUsedJmxPorts)
+          mapOfUsedJmxPorts += jmxPort -> contextName
           mergedConfig = addSparkExecutorJMXPortToConfig(mergedConfig, jmxPort)
           jmxProperty = ActorUtils.createJmxConfigValue(jmxPort)
         }
@@ -107,17 +112,19 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef) extends Act
 
                 val host = getValueFromConfig(defaultConfig, ActorUtils.HOST_PROPERTY_NAME, "127.0.0.1")
                 val actorRef = context.actorSelection(ActorUtils.getContextActorAddress(contextName, host, port))
-                sendInitMessage(contextName, port, actorRef, webSender, mergedConfig, result.pathForSpark)
+                sendInitMessage(contextName, port, jmxPort, actorRef, webSender, mergedConfig, result.pathForSpark)
 
               }
               case e:Exception => {
                 log.error(s"Failed! ${ExceptionUtils.getStackTrace(e)}");
+                mapOfUsedJmxPorts.remove(jmxPort)
                 webSender ! e
               }
             }
           }
           case Failure(e) => {
             log.error("FAILED! ", e)
+            mapOfUsedJmxPorts.remove(jmxPort)
             sender ! e
           }
         }
@@ -170,9 +177,28 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef) extends Act
       log.info(s"Received GetAllContexts message.")
     }
 
+    case Terminated(actor) => {
+
+      log.info(s"Received TERMINATED message from: ${actor.path.toString}")
+
+      val actorPath = actor.path.toString
+      val actorName = actorPath.substring(actorPath.lastIndexOf("/") + 1 + ActorUtils.PREFIX_CONTEXT_ACTOR.size)
+
+      log.info(s"Removing garbage for dead actor: $actorName")
+
+      if(contextMap.contains(actorName)) contextMap.remove(actorName)
+
+      if(processMap.contains(actorName)) processMap.remove(actorName)
+
+      mapOfUsedJmxPorts.foreach { case (port: Int, name: String) =>
+        if(actorName.equals(name)) mapOfUsedJmxPorts.remove(port)
+      }
+
+    }
+
   }
 
-  def sendInitMessage(contextName: String, port: Int, actorRef: ActorSelection, sender: ActorRef, config:Config, jarsForSpark: List[String]):Unit = {
+  def sendInitMessage(contextName: String, port: Int, jmxPort: Int, actorRef: ActorSelection, sender: ActorRef, config:Config, jarsForSpark: List[String]):Unit = {
 
     val sleepTime = getValueFromConfig(config, "appConf.init.sleep", 3000)
     val sparkUiPort = config.getString(sparkUIConfigPath)
@@ -192,11 +218,22 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef) extends Act
                 case Initialized => {
                   contextMap += contextName -> ContextInfo(contextName, sparkUiPort, actorRef)
                   sender ! Context(contextName, sparkUiPort)
+
+                  actorRef.resolveOne().onComplete {
+                    case Success(actor) => {
+                      context.watch(actor)
+                    }
+                    case Failure(e) => {
+                      log.error(ExceptionUtils.getStackTrace(e))
+                    }
+                  }
+
                 }
                 case e:FailedInit => {
                   log.error(s"Init failed for context $contextName", e);
                   sender ! e
                   processMap.remove(contextName).foreach(p => scheduleDestroyMessage(p))
+                  mapOfUsedJmxPorts.remove(jmxPort)
                 }
               }
             }
@@ -204,11 +241,13 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef) extends Act
               log.error("FAILED to send init message!", e)
               sender ! FailedInit(ExceptionUtils.getStackTrace(e))
               processMap.remove(contextName).get.destroy
+              mapOfUsedJmxPorts.remove(jmxPort)
             }
           }
         }
         case Failure(e) => {
           log.error("FAILED to send IsAwake message, the new Actor didn't initialize!", e)
+          mapOfUsedJmxPorts.remove(jmxPort)
         }
       }
     }
@@ -247,6 +286,48 @@ class ContextManagerActor(defaultConfig: Config, jarActor: ActorRef) extends Act
     context.system.scheduler.scheduleOnce(5 seconds) {
       process.destroy()
     }
+  }
+
+  def findAvailableJmxPort(lastUsedPort: Int, mapOfUsedPorts: HashMap[Int, String]): Integer = {
+    var ss:ServerSocket = null
+    var ds:DatagramSocket = null
+
+    val notFound = true
+    var port = lastUsedPort + 1
+    while(mapOfUsedPorts.contains(port)){
+      port += 1
+    }
+
+    while (notFound) {
+      try {
+        if(mapOfUsedPorts.contains(port)){
+          throw new Exception("Port already in use.")
+        }
+        ss = new ServerSocket(port)
+        ss.setReuseAddress(true)
+        ds = new DatagramSocket(port)
+        ds.setReuseAddress(true)
+        return port
+      }
+      catch {
+        case e: IOException => {
+          port += 1
+        }
+      } finally {
+        if (ds != null) {
+          ds.close()
+        }
+
+        if (ss != null) {
+          try {
+            ss.close()
+          } catch {
+            case e: IOException => println("Exception when closing port.")
+          }
+        }
+      }
+    }
+    return 0
   }
 
 }

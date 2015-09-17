@@ -18,9 +18,9 @@ class IntegrationTests extends FunSuite with BeforeAndAfter with ScalaFutures wi
   implicit val timeout = Timeout(10000)
   implicit val system = ActorSystem("localSystem")
 
-  val client = new SparkJobRestClient("http://localhost:8097")
+  val client = new SparkJobRestClient("http://10.0.2.83:8097")
   val contextName = "testContext"
-  val exampleJarPath = "/Users/raduchilom/projects/spark-job-rest/examples/example-job/target/example-job.jar"
+  val exampleJarPath = "/var/lib/xPatterns/spark-job-rest/jars/example-job.jar"
   val parameters = Map[String, String]("jars" -> exampleJarPath,
     "input" -> "100")
 
@@ -58,6 +58,23 @@ class IntegrationTests extends FunSuite with BeforeAndAfter with ScalaFutures wi
       client.deleteContext(contextName + i) should be(true)
       contexts = client.getContexts()
       contexts.contexts.size should be(4 - i)
+    }
+  }
+
+  test("Create Contexts & Delete Contexts Simultaneous") {
+
+    for(i <- 0 to 29) {
+      client.submitCreateContext(contextName + i, parameters)
+    }
+
+    Thread.sleep(30000)
+    var contexts = client.getContexts()
+    contexts.contexts.size should be(30)
+
+    for(i <- 0 to 29) {
+      client.deleteContext(contextName + i) should be(true)
+      contexts = client.getContexts()
+      contexts.contexts.size should be(9 - i)
     }
   }
 

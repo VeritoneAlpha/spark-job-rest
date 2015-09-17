@@ -164,6 +164,18 @@ class SparkJobRestClient(serverAddress: String)(implicit system: ActorSystem) {
     null
   }
 
+  @throws(classOf[Exception])
+  def submitCreateContext(contextName: String, parameters: Map[String, String]) = {
+
+    val body = createParametersString(parameters)
+
+    val pipeline: HttpRequest => Future[Context] = sendReceive ~> unmarshal[Context]
+
+    val response: Future[Context] = pipeline(Post(serverAddress + contextsRoute + SEPARATOR + contextName, body))
+
+    response
+  }
+
 //  ============  Jobs Route  ============
   @throws(classOf[Exception])
   def getJobs() : Jobs = {
