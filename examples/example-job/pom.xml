@@ -35,7 +35,7 @@
         <dependency>
             <groupId>com.xpatterns</groupId>
             <artifactId>spark-job-rest-api</artifactId>
-            <version>0.3.1-SNAPSHOT</version>
+            <version>0.3.1</version>
         </dependency>
         <dependency>
             <groupId>org.apache.spark</groupId>
